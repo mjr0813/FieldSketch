@@ -594,15 +594,115 @@ function signedArea(pts){let a=0;for(let i=0;i<pts.length;i++){const j=(i+1)%pts
 function compPerim(comp){let p=0;for(const e of edges.values())if(comp.has(e.a)&&comp.has(e.b)){const a=verts.get(e.a),b=verts.get(e.b);p+=Math.hypot(b.x-a.x,b.y-a.y);}return p;}
 function compAid(comp){for(const v of comp)for(const e of edges.values())if(e.a===v||e.b===v)return e.areaId;return null;}
 function mergeAreaIds(){
+  // Only merge open components — closed shapes are inviolable
   for(const comp of components()){
+    if(openEnds(comp).length===0)continue; // skip closed
     const cnt=new Map();
-    for(const v of comp)for(const e of edges.values())if((e.a===v||e.b===v)&&comp.has(e.a)&&comp.has(e.b))cnt.set(e.areaId,(cnt.get(e.areaId)||0)+1);
+    for(const v of comp)for(const e of edges.values())
+      if((e.a===v||e.b===v)&&comp.has(e.a)&&comp.has(e.b))
+        cnt.set(e.areaId,(cnt.get(e.areaId)||0)+1);
     if(!cnt.size)continue;
     const canon=[...cnt.entries()].sort((a,b)=>b[1]-a[1])[0][0];
     for(const e of edges.values())if(comp.has(e.a)&&comp.has(e.b))e.areaId=canon;
   }
 }
 function findAid(vid){for(const e of edges.values())if(e.a===vid||e.b===vid)return e.areaId;return null;}
+
+// ── Split edge at world point ──────────────────────────
+// Finds edge within threshold ft of (wx,wy), splits it, returns new vid or null.
+function splitEdgeAt(wx,wy,threshold=0.5){
+  let bestEid=null,bestDist=Infinity,bestT=0;
+  for(const[eid,e]of edges){
+    const a=verts.get(e.a),b=verts.get(e.b);
+    const dx=b.x-a.x,dy=b.y-a.y,len2=dx*dx+dy*dy;
+    if(len2<0.001)continue;
+    const t=Math.max(0,Math.min(1,((wx-a.x)*dx+(wy-a.y)*dy)/len2));
+    const dist=Math.hypot(wx-(a.x+t*dx),wy-(a.y+t*dy));
+    if(dist<threshold&&dist<bestDist){bestDist=dist;bestEid=eid;bestT=t;}
+  }
+  if(bestEid===null)return null;
+  const e=edges.get(bestEid);
+  const a=verts.get(e.a),b=verts.get(e.b);
+  const nx=Math.round((a.x+(b.x-a.x)*bestT)*1000)/1000;
+  const ny=Math.round((a.y+(b.y-a.y)*bestT)*1000)/1000;
+  const newVid=nVid++;
+  verts.set(newVid,{x:nx,y:ny});
+  const aid=e.areaId;
+  edges.delete(bestEid);
+  addEdge(e.a,newVid,aid);
+  addEdge(newVid,e.b,aid);
+  return newVid;
+}
+
+// ── Point-in-polygon (ray casting) ───────────────────
+function pointInPoly(px,py,pts){
+  let inside=false;
+  const n=pts.length;
+  for(let i=0,j=n-1;i<n;j=i++){
+    const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+
+// ── Segment intersection ──────────────────────────────
+function segsIntersect(ax,ay,bx,by,cx,cy,dx,dy){
+  const d1x=bx-ax,d1y=by-ay,d2x=dx-cx,d2y=dy-cy;
+  const cross=d1x*d2y-d1y*d2x;
+  if(Math.abs(cross)<1e-10)return false;
+  const t=((cx-ax)*d2y-(cy-ay)*d2x)/cross;
+  const u=((cx-ax)*d1y-(cy-ay)*d1x)/cross;
+  return t>0.001&&t<0.999&&u>0.001&&u<0.999;
+}
+
+// ── Find overlapping closed comp (cutout detection) ───
+// Returns the existing closed comp that overlaps newComp, or null.
+function findOverlappingClosedComp(newComp){
+  const newOrd=orderPoly(newComp);
+  const newPts=newOrd.map(v=>verts.get(v));
+  for(const comp of components()){
+    if(comp===newComp)continue;
+    if(openEnds(comp).length!==0)continue;
+    if(![...newComp].some(v=>comp.has(v)))continue; // must share a vertex
+    const exPts=orderPoly(comp).map(v=>verts.get(v));
+    // Test: any new vertex strictly inside existing polygon
+    if(newPts.some(p=>pointInPoly(p.x,p.y,exPts)))return comp;
+    // Test: any edge of new crosses any edge of existing
+    const n1=newPts.length,n2=exPts.length;
+    for(let i=0;i<n1;i++){
+      const a=newPts[i],b=newPts[(i+1)%n1];
+      for(let j=0;j<n2;j++){
+        const c=exPts[j],d=exPts[(j+1)%n2];
+        if(segsIntersect(a.x,a.y,b.x,b.y,c.x,c.y,d.x,d.y))return comp;
+      }
+    }
+  }
+  return null;
+}
+
+// ── Find edge under a screen point ───────────────────
+// Returns {eid, wx, wy} of nearest edge within screen threshold, or null.
+function findEdgeNear(sx,sy,screenThresh=18){
+  const r=canvas.getBoundingClientRect();
+  let bestEid=null,bestDist=Infinity,bestWx=0,bestWy=0;
+  for(const[eid,e]of edges){
+    const a=verts.get(e.a),b=verts.get(e.b);
+    const sa=w2s(a.x,a.y),sb=w2s(b.x,b.y);
+    const dx=sb.x-sa.x,dy=sb.y-sa.y,len2=dx*dx+dy*dy;
+    if(len2<1)continue;
+    const t=Math.max(0,Math.min(1,((sx-sa.x)*dx+(sy-sa.y)*dy)/len2));
+    const dist=Math.hypot(sx-(sa.x+t*dx),sy-(sa.y+t*dy));
+    if(dist<screenThresh&&dist<bestDist){
+      bestDist=dist;bestEid=eid;
+      // World coords of closest point
+      const wx=(sa.x+t*dx-vpX)/vpS;
+      const wy=-((sa.y+t*dy-vpY)/vpS);
+      bestWx=a.x+(b.x-a.x)*t;
+      bestWy=a.y+(b.y-a.y)*t;
+    }
+  }
+  return bestEid!==null?{eid:bestEid,wx:bestWx,wy:bestWy}:null;
+}
 
 // ═══════════════════════════════════════════════════════
 // APP STATE
@@ -821,19 +921,16 @@ function doConfirm(){
   pushUndo();
   const v1=addVert(curX,curY);
   const v2=addVert(ep.x,ep.y);
-  let aid=findAid(v1);if(aid===null)aid=nAid++;
+  let aid=findAidForNewEdge(v1,v2);
   addEdge(v1,v2,aid);
   mergeAreaIds();
   curX=ep.x;curY=ep.y;curPlaced=true;
   clearProv();numBuf='';updateLenDisp();
 
-  // Check if this confirm just closed a shape — if so, trigger name modal
+  // Check if this confirm just closed a shape
   const comp=getCompAtCursor();
   if(comp&&openEnds(comp).length===0){
-    // Shape just closed — cursor stays at closing vertex (ep), prompt for name
-    const sqft=calcCompSqft(comp);
-    pendingAid=compAid(comp);
-    showAreaModal(sqft);
+    handleShapeClose(comp);
   }
 
   redraw();updateStats();updateCloseBtn();
@@ -850,19 +947,98 @@ function closeActiveShape(){
   if(ends.length!==2)return;
   pushUndo();
   const[e1,e2]=ends;
-  const aid=findAid(e1)||nAid++;
+  const aid=findAidForNewEdge(e1,e2);
   addEdge(e1,e2,aid);
   mergeAreaIds();
-  // Cursor stays at its current position (the closing vertex) — do not move to centroid
-  const sqft=calcCompSqft(comp);
-  pendingAid=aid;showAreaModal(sqft);
+  handleShapeClose(comp);
   redraw();updateStats();updateCloseBtn();
 }
-function getCompAtCursor(){
-  for(const comp of components()){
-    for(const vid of comp){const v=verts.get(vid);if(Math.hypot(v.x-curX,v.y-curY)<0.5)return comp;}
+
+// Determine areaId for a new edge being drawn from v1 toward v2.
+// Prefer the areaId of an existing open-shape edge connected to v1 or v2.
+// Fall back to a fresh areaId.
+function findAidForNewEdge(v1,v2){
+  // Look for an open-chain edge at v1
+  for(const e of edges.values()){
+    if(e.a!==v1&&e.b!==v1)continue;
+    // Check if this edge's component is open
+    const comp=getCompOf(v1);
+    if(openEnds(comp).length>0)return e.areaId;
   }
-  for(const comp of components()){if(openEnds(comp).length===2)return comp;}
+  // Look for an open-chain edge at v2
+  for(const e of edges.values()){
+    if(e.a!==v2&&e.b!==v2)continue;
+    const comp=getCompOf(v2);
+    if(openEnds(comp).length>0)return e.areaId;
+  }
+  return nAid++;
+}
+
+function getCompOf(vid){
+  for(const comp of components())if(comp.has(vid))return comp;
+  return new Set();
+}
+
+// Called when a shape has just closed. Detects cutout vs standalone.
+function handleShapeClose(comp){
+  const overlap=findOverlappingClosedComp(comp);
+
+  // The newly closed shape's edges are those that were assigned the open-chain's areaId.
+  // Find that areaId — it's the most common one among edges connecting vertices in comp
+  // that were part of the open chain (i.e., excluding any edges belonging to already-closed shapes).
+  // Since mergeAreaIds already ran on open chains, the open chain has one dominant areaId.
+  const openAid=getOpenAid(comp);
+  const sqft=calcAidSqft(openAid);
+
+  if(overlap&&openAid!==null){
+    // Cutout detected — give the new shape a fresh areaId
+    const newAid=nAid++;
+    for(const e of edges.values())if(e.areaId===openAid)e.areaId=newAid;
+    pendingAid=newAid;
+  }else{
+    pendingAid=openAid||compAid(comp);
+  }
+  showAreaModal(sqft);
+}
+
+// Get the areaId that was being used for the open chain that just closed
+function getOpenAid(comp){
+  const cnt=new Map();
+  for(const e of edges.values()){
+    if(!comp.has(e.a)||!comp.has(e.b))continue;
+    cnt.set(e.areaId,(cnt.get(e.areaId)||0)+1);
+  }
+  if(!cnt.size)return null;
+  return[...cnt.entries()].sort((a,b)=>b[1]-a[1])[0][0];
+}
+
+// Calculate sqft for a given areaId
+function calcAidSqft(aid){
+  if(aid===null)return 0;
+  const eids=[...edges].filter(([,e])=>e.areaId===aid);
+  const aVerts=new Set();
+  for(const[,e]of eids){aVerts.add(e.a);aVerts.add(e.b);}
+  const aAdj=new Map();
+  for(const v of aVerts)aAdj.set(v,[]);
+  for(const[,e]of eids){aAdj.get(e.a).push(e.b);aAdj.get(e.b).push(e.a);}
+  const aEnds=[...aVerts].filter(v=>(aAdj.get(v)||[]).length===1);
+  const ord=orderAreaPoly(aVerts,aAdj,aEnds);
+  return shoelace(ord.map(v=>verts.get(v)));
+}
+function getCompAtCursor(){
+  // Find open component containing cursor vertex (prefer open over closed for drawing)
+  const candidates=[];
+  for(const comp of components()){
+    for(const vid of comp){
+      const v=verts.get(vid);
+      if(Math.hypot(v.x-curX,v.y-curY)<0.5){candidates.push(comp);break;}
+    }
+  }
+  // Prefer open comp
+  const open=candidates.find(c=>openEnds(c).length===2);
+  if(open)return open;
+  // Fall back to any open comp in drawing
+  for(const comp of components())if(openEnds(comp).length===2)return comp;
   return null;
 }
 function calcCompSqft(comp){
@@ -875,15 +1051,30 @@ function calcCompSqft(comp){
 // STATS
 // ═══════════════════════════════════════════════════════
 function updateStats(){
-  const comps=components();
-  let total=0,maxPerim=0;const named=[];
-  for(const comp of comps){
-    if(openEnds(comp).length!==0)continue;
-    const sq=calcCompSqft(comp);total+=sq;
-    const p=compPerim(comp);if(p>maxPerim)maxPerim=p;
-    const aid=compAid(comp);
-    if(aid&&areaNames.has(aid))named.push({...areaNames.get(aid),sqft:sq});
+  // Build per-area stats using areaId grouping (handles cutouts correctly)
+  const areaEdges=new Map();
+  for(const[eid,e]of edges){
+    if(!areaEdges.has(e.areaId))areaEdges.set(e.areaId,[]);
+    areaEdges.get(e.areaId).push(eid);
   }
+  let total=0,maxPerim=0;const named=[];
+  for(const[aid,eids]of areaEdges){
+    const aVerts=new Set();
+    for(const eid of eids){const e=edges.get(eid);aVerts.add(e.a);aVerts.add(e.b);}
+    const aAdj=new Map();
+    for(const v of aVerts)aAdj.set(v,[]);
+    for(const eid of eids){const e=edges.get(eid);aAdj.get(e.a).push(e.b);aAdj.get(e.b).push(e.a);}
+    const aEnds=[...aVerts].filter(v=>(aAdj.get(v)||[]).length===1);
+    if(aEnds.length!==0)continue; // skip open areas
+    const ord=orderAreaPoly(aVerts,aAdj,aEnds);
+    const pts=ord.map(v=>verts.get(v));
+    const sq=shoelace(pts);
+    total+=sq;
+    let p=0;for(const eid of eids){const e=edges.get(eid);const a=verts.get(e.a),b=verts.get(e.b);p+=Math.hypot(b.x-a.x,b.y-a.y);}
+    if(p>maxPerim)maxPerim=p;
+    if(areaNames.has(aid))named.push({...areaNames.get(aid),sqft:sq});
+  }
+
   document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:1}):'—';
   document.getElementById('hPerim').textContent=maxPerim>0?maxPerim.toFixed(1):'—';
 
@@ -948,13 +1139,34 @@ function drawOriginMark(){
 }
 
 function drawComponents(){
-  for(const comp of components()){
-    const ends=openEnds(comp),closed=ends.length===0;
-    const aid=compAid(comp);
-    const color=(aid&&areaNames.has(aid))?areaNames.get(aid).color:COLORS[(aid||0)%COLORS.length];
-    const ord=orderPoly(comp),pts=ord.map(v=>verts.get(v));
+  // Group edges by areaId — this correctly separates cutout shapes from parents
+  const areaEdges=new Map(); // areaId -> [eids]
+  for(const[eid,e]of edges){
+    if(!areaEdges.has(e.areaId))areaEdges.set(e.areaId,[]);
+    areaEdges.get(e.areaId).push(eid);
+  }
+
+  for(const[aid,eids]of areaEdges){
+    // Build vertex set for this area
+    const aVerts=new Set();
+    for(const eid of eids){const e=edges.get(eid);aVerts.add(e.a);aVerts.add(e.b);}
+
+    // Determine open/closed for this area's subgraph
+    const aAdj=new Map();
+    for(const v of aVerts)aAdj.set(v,[]);
+    for(const eid of eids){const e=edges.get(eid);aAdj.get(e.a).push(e.b);aAdj.get(e.b).push(e.a);}
+    const aEnds=[...aVerts].filter(v=>(aAdj.get(v)||[]).length===1);
+    const closed=aEnds.length===0;
+
+    // Order vertices for this area
+    const ord=orderAreaPoly(aVerts,aAdj,aEnds);
+    const pts=ord.map(v=>verts.get(v));
+    if(pts.length<2)continue;
+
+    const color=(areaNames.has(aid))?areaNames.get(aid).color:COLORS[(aid-1)%COLORS.length];
     const cw=signedArea(pts)<0;
 
+    // Fill
     if(showFill&&pts.length>=3){
       ctx.save();ctx.beginPath();
       const s0=w2s(pts[0].x,pts[0].y);ctx.moveTo(s0.x,s0.y);
@@ -963,9 +1175,10 @@ function drawComponents(){
       ctx.fillStyle=h2r(color,closed?0.09:0.04);ctx.fill();ctx.restore();
     }
 
+    // Walls
     ctx.save();ctx.strokeStyle=closed?color:'#2a5c84';ctx.lineWidth=2;ctx.lineJoin='round';
-    for(const[,e]of edges){
-      if(!comp.has(e.a)||!comp.has(e.b))continue;
+    for(const eid of eids){
+      const e=edges.get(eid);
       const sa=w2s(verts.get(e.a).x,verts.get(e.a).y),sb=w2s(verts.get(e.b).x,verts.get(e.b).y);
       ctx.beginPath();ctx.moveTo(sa.x,sa.y);ctx.lineTo(sb.x,sb.y);ctx.stroke();
     }
@@ -974,24 +1187,22 @@ function drawComponents(){
     if(showDims)drawDims(ord,pts,cw^dimFlipped,closed);
     if(showAngles&&closed)drawAngles(pts);
 
-    if(closed&&aid&&areaNames.has(aid)){
-      // Use proper polygon area centroid (weighted, not vertex average)
-      const {cx,cy}=polyCentroid(pts);
+    // Area label
+    if(closed&&areaNames.has(aid)){
+      const{cx,cy}=polyCentroid(pts);
       const sc=w2s(cx,cy);
-      const sqft=calcCompSqft(comp);
-      ctx.save();
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      // Name line
+      const sqft=shoelace(pts);
+      ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.font=`600 11px 'Source Sans 3',sans-serif`;
       ctx.fillStyle=h2r(color,0.6);
       ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y-8);
-      // Sqft line
       ctx.font=`400 10px 'DM Mono',monospace`;
       ctx.fillStyle=h2r(color,0.45);
       ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²',sc.x,sc.y+7);
       ctx.restore();
     }
 
+    // Vertices
     ord.forEach((vid,i)=>{
       const v=verts.get(vid),s=w2s(v.x,v.y);
       const isEnd=!closed&&(i===0||i===ord.length-1),r=isEnd?6:4;
@@ -1002,6 +1213,17 @@ function drawComponents(){
       ctx.restore();
     });
   }
+}
+
+function orderAreaPoly(aVerts,aAdj,aEnds){
+  const start=aEnds.length?aEnds[0]:[...aVerts][0];
+  const ord=[start],vis=new Set([start]);let cur=start;
+  while(true){
+    const nbs=(aAdj.get(cur)||[]).filter(n=>!vis.has(n)&&aVerts.has(n));
+    if(!nbs.length)break;
+    ord.push(nbs[0]);vis.add(nbs[0]);cur=nbs[0];
+  }
+  return ord;
 }
 
 function drawDims(ord,pts,outside,closed){
@@ -1282,14 +1504,26 @@ function onCL(e){
 
 // Cursor tap: only in cursor mode
 function handleCursorTap(pos){
+  // 1. Snap to nearest vertex
   const sv=nearVert(pos.x,pos.y);
   if(sv!==null){
     const v=verts.get(sv);curX=v.x;curY=v.y;curPlaced=true;clearProv();
-  }else{
-    const w=s2w(pos.x,pos.y);const sg=snapG(w.x,w.y);
-    curX=sg.x;curY=sg.y;curPlaced=true;
-    if(hasProvisional())clearProv();
+    redraw();updateStats();updateCloseBtn();return;
   }
+  // 2. Snap to nearest edge — split it and place cursor at split point
+  const edgeHit=findEdgeNear(pos.x,pos.y);
+  if(edgeHit!==null){
+    pushUndo();
+    const newVid=splitEdgeAt(edgeHit.wx,edgeHit.wy);
+    if(newVid!==null){
+      const v=verts.get(newVid);curX=v.x;curY=v.y;curPlaced=true;clearProv();
+      redraw();updateStats();updateCloseBtn();return;
+    }
+  }
+  // 3. Free placement
+  const w=s2w(pos.x,pos.y);const sg=snapG(w.x,w.y);
+  curX=sg.x;curY=sg.y;curPlaced=true;
+  if(hasProvisional())clearProv();
   redraw();updateStats();updateCloseBtn();
 }
 
