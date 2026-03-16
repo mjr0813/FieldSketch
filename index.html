@@ -879,19 +879,17 @@ function doConfirm(){
   pushUndo();
   const v1=addVert(curX,curY);
   const v2=addVert(ep.x,ep.y);
-  // Use existing areaId only if v1 belongs to an open shape.
-  // If v1 is on a closed shape (or unconnected), start a fresh areaId.
   let aid=findAidOpen(v1);if(aid===null)aid=nAid++;
   addEdge(v1,v2,aid);
   mergeAreaIds();
   curX=ep.x;curY=ep.y;curPlaced=true;
   clearProv();numBuf='';updateLenDisp();
 
-  // Check if this confirm just closed a shape — if so, trigger name modal
-  const comp=getCompAtCursor();
-  if(comp&&openEnds(comp).length===0){
-    const sqft=calcCompSqft(comp);
-    pendingAid=compAid(comp);
+  // Check if the areaId we just drew into is now closed
+  const g=aidGeom(aid);
+  if(g.closed&&g.pts.length>=3){
+    const sqft=shoelace(g.pts);
+    pendingAid=aid;
     showAreaModal(sqft);
   }
 
@@ -903,25 +901,56 @@ function doConfirm(){
 // ═══════════════════════════════════════════════════════
 function closeActiveShape(){
   if(hasProvisional())doConfirm();
-  const comp=getCompAtCursor();
-  if(!comp)return;
-  const ends=openEnds(comp);
-  if(ends.length!==2)return;
+  // Find the open areaId chain at the cursor
+  const aid=getOpenAidAtCursor();
+  if(aid===null)return;
+  const g=aidGeom(aid);
+  if(g.ends.length!==2||g.pts.length<3)return;
   pushUndo();
-  const[e1,e2]=ends;
-  const aid=findAidOpen(e1)||nAid++;
+  const[e1,e2]=g.ends;
   addEdge(e1,e2,aid);
   mergeAreaIds();
-  // Cursor stays at its current position (the closing vertex) — do not move to centroid
-  const sqft=calcCompSqft(comp);
+  const g2=aidGeom(aid);
+  const sqft=shoelace(g2.pts);
   pendingAid=aid;showAreaModal(sqft);
   redraw();updateStats();updateCloseBtn();
 }
+
+// Returns the areaId of an open chain that contains the cursor position, or null
+function getOpenAidAtCursor(){
+  const closed=closedAids();
+  const aids=new Set([...edges.values()].map(e=>e.areaId));
+  for(const aid of aids){
+    if(closed.has(aid))continue;
+    const g=aidGeom(aid);
+    // Check if cursor vertex is in this chain
+    for(const vid of g.av){
+      const v=verts.get(vid);
+      if(Math.hypot(v.x-curX,v.y-curY)<0.5)return aid;
+    }
+  }
+  // Fallback: any open chain
+  for(const aid of aids){
+    if(!closed.has(aid)){const g=aidGeom(aid);if(g.ends.length===2)return aid;}
+  }
+  return null;
+}
+
+function updateCloseBtn(){
+  const aid=getOpenAidAtCursor();
+  const btn=document.getElementById('paClose');
+  const flip=document.getElementById('paFlip');
+  if(aid!==null){
+    const g=aidGeom(aid);
+    btn.style.display=(g.ends.length===2&&g.pts.length>=3)?'':'none';
+    flip.style.display=g.pts.length>=2?'':'none';
+  }else{btn.style.display='none';flip.style.display='none';}
+}
 function getCompAtCursor(){
-  // Find the open-chain component (by graph) that contains the cursor vertex.
-  // We still use graph components for open chains since they haven't split yet.
+  // Returns graph component — only used for open chain detection
+  // (graph components still work for single open chains with no shared vertices)
   for(const comp of components()){
-    if(openEnds(comp).length===0)continue; // skip closed
+    if(openEnds(comp).length===0)continue;
     for(const vid of comp){const v=verts.get(vid);if(Math.hypot(v.x-curX,v.y-curY)<0.5)return comp;}
   }
   for(const comp of components()){if(openEnds(comp).length===2)return comp;}
@@ -972,12 +1001,13 @@ function updateStats(){
   document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:1}):'—';
   document.getElementById('hPerim').textContent=maxPerim>0?maxPerim.toFixed(1):'—';
 
-  const ac=getCompAtCursor();
+  // To-close readout: use open areaId at cursor
+  const openAid=getOpenAidAtCursor();
   const ci=document.getElementById('closeInd');
-  if(ac){
-    const ends=openEnds(ac);
-    if(ends.length===2){
-      const v1=verts.get(ends[0]),v2=verts.get(ends[1]);
+  if(openAid!==null){
+    const g=aidGeom(openAid);
+    if(g.ends.length===2){
+      const v1=verts.get(g.ends[0]),v2=verts.get(g.ends[1]);
       document.getElementById('closeVal').textContent=`${Math.abs(v1.x-v2.x).toFixed(1)}' X  ${Math.abs(v1.y-v2.y).toFixed(1)}' Y`;
       ci.classList.add('show');
     }else ci.classList.remove('show');
@@ -989,17 +1019,6 @@ function updateStats(){
     document.getElementById('aoList').innerHTML=named.map(a=>`<div class="ao-row"><span class="ao-name"><span class="ao-dot" style="background:${a.color}"></span>${a.name}</span><span class="ao-sqft">${a.sqft.toLocaleString('en-US',{maximumFractionDigits:1})}</span></div>`).join('');
     document.getElementById('glaVal').textContent=total.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²';
   }else ov.classList.remove('show');
-}
-
-function updateCloseBtn(){
-  const comp=getCompAtCursor();
-  const btn=document.getElementById('paClose');
-  const flip=document.getElementById('paFlip');
-  if(comp){
-    const ends=openEnds(comp);
-    btn.style.display=(ends.length===2&&[...comp].length>=3)?'':'none';
-    flip.style.display=[...comp].length>=2?'':'none';
-  }else{btn.style.display='none';flip.style.display='none';}
 }
 
 // ═══════════════════════════════════════════════════════
