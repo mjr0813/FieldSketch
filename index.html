@@ -609,7 +609,7 @@ function findAid(vid){for(const e of edges.values())if(e.a===vid||e.b===vid)retu
 // ═══════════════════════════════════════════════════════
 let mode='draw';
 let snapOn=true,showDims=true,showFill=true,showAngles=false;
-let customDeg=null,activeDir='N',dimFlipped=false;
+let customDeg=null,activeDir='N',dimFlipped=true;
 let curX=0,curY=0,curPlaced=false;
 let numBuf='';
 let provVecs=[],provSnap=null;
@@ -711,44 +711,57 @@ function addProvVec(dx,dy){
   document.getElementById('lenDisp').classList.add('prov-active');
   updateUrBtns();
 }
+const OPPOSITE={N:'S',S:'N',E:'W',W:'E'};
+
 function snapSeek(dir){
   // Diagonal directions have no snap-seek behavior
   if(dir==='NE'||dir==='NW'||dir==='SE'||dir==='SW')return;
 
-  // Collect candidate coordinate values from ALL vertices in the drawing.
-  // N/S: collect unique Y values in the direction of travel from curY.
-  // E/W: collect unique X values in the direction of travel from curX.
-  const EPS=0.01; // floating point guard only
-  let vals=[];
+  const EPS=0.01;
 
+  // If a snap-seek is already active and user taps the OPPOSITE direction,
+  // cycle backward through the same candidate list rather than starting fresh.
+  if(provSnap&&provSnap.vals&&provSnap.vals.length&&OPPOSITE[dir]===provSnap.dir){
+    const idx=(provSnap.idx-1+provSnap.vals.length)%provSnap.vals.length;
+    provSnap={dir:provSnap.dir,vals:provSnap.vals,idx};
+    const target=provSnap.vals[idx];
+    let dx=0,dy=0;
+    if(provSnap.dir==='N'||provSnap.dir==='S') dy=target-curY;
+    else                                        dx=target-curX;
+    provVecs=[{dx,dy,snap:true}];
+    document.getElementById('provBanner').classList.add('show');
+    document.getElementById('lenDisp').classList.add('prov-active');
+    updateUrBtns();
+    return;
+  }
+
+  // Fresh seek — collect candidate coordinate values from ALL vertices.
+  // N/S: unique Y values in direction of travel.
+  // E/W: unique X values in direction of travel.
+  let vals=[];
   if(dir==='N'){
-    // Moving up: want Y values > curY
     for(const v of verts.values())if(v.y>curY+EPS)vals.push(v.y);
     vals=dedup(vals).sort((a,b)=>a-b); // ascending — nearest first going up
   }else if(dir==='S'){
-    // Moving down: want Y values < curY
     for(const v of verts.values())if(v.y<curY-EPS)vals.push(v.y);
     vals=dedup(vals).sort((a,b)=>b-a); // descending — nearest first going down
   }else if(dir==='E'){
-    // Moving right: want X values > curX
     for(const v of verts.values())if(v.x>curX+EPS)vals.push(v.x);
     vals=dedup(vals).sort((a,b)=>a-b);
   }else if(dir==='W'){
-    // Moving left: want X values < curX
     for(const v of verts.values())if(v.x<curX-EPS)vals.push(v.x);
     vals=dedup(vals).sort((a,b)=>b-a);
   }
 
   if(!vals.length)return;
 
-  // Cycle index: same direction tap advances to next candidate
+  // Same direction tap advances forward; new direction starts at index 0
   let idx=0;
   if(provSnap&&provSnap.dir===dir&&provSnap.vals){
     idx=(provSnap.idx+1)%vals.length;
   }
   provSnap={dir,vals,idx};
 
-  // Build provisional vector to the snapped coordinate
   const target=vals[idx];
   let dx=0,dy=0;
   if(dir==='N'||dir==='S') dy=target-curY;
