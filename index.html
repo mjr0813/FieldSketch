@@ -557,7 +557,11 @@ function addVert(x,y){
   const id=nVid++;verts.set(id,{x,y});return id;
 }
 function addEdge(a,b,aid){
-  for(const[id,e]of edges)if((e.a===a&&e.b===b)||(e.a===b&&e.b===a))return id;
+  // Only deduplicate if same vertices AND same areaId.
+  // Two shapes can share the same wall segment with different areaIds.
+  for(const[id,e]of edges){
+    if(e.areaId===aid&&((e.a===a&&e.b===b)||(e.a===b&&e.b===a)))return id;
+  }
   const id=nEid++;edges.set(id,{a,b,areaId:aid});return id;
 }
 function pruneVerts(){
@@ -921,7 +925,6 @@ function closeActiveShape(){
 // that pass through vertices of the new shape.
 function splitSharedEdges(newAid){
   const closed=closedAids();
-  console.log('splitSharedEdges: newAid=',newAid,'closed=',closed,'areaNames before=',new Map(areaNames));
   const newVerts=new Set([...edges.values()]
     .filter(e=>e.areaId===newAid)
     .flatMap(e=>[e.a,e.b]));
@@ -934,14 +937,12 @@ function splitSharedEdges(newAid){
       if(e.a===vid||e.b===vid)continue;
       const a=verts.get(e.a),b=verts.get(e.b);
       if(!pointOnSegment(v.x,v.y,a.x,a.y,b.x,b.y))continue;
-      console.log('  Splitting edge',eid,'(areaId',e.areaId,') at vertex',vid);
       const parentAid=e.areaId;
       edges.delete(eid);
       addEdge(e.a,vid,parentAid);
       addEdge(vid,e.b,parentAid);
     }
   }
-  console.log('splitSharedEdges done: areaNames after=',new Map(areaNames));
 }
 
 // Returns true if point (px,py) lies on segment (ax,ay)-(bx,by)
@@ -1095,9 +1096,6 @@ function drawComponents(){
   const aids=new Set([...edges.values()].map(e=>e.areaId));
   for(const aid of aids){
     const g=aidGeom(aid);
-    if(areaNames.has(aid)){
-      console.log(`drawComponents aid=${aid} closed=${g.closed} pts=${g.pts.length} ends=${g.ends.length}`);
-    }
     const{closed,ord,pts}=g;
     if(pts.length<2)continue;
     const color=(areaNames.has(aid))?areaNames.get(aid).color:COLORS[(aid-1)%COLORS.length];
@@ -1521,9 +1519,7 @@ function chipSel(el,name){
 function cancelAreaModal(){document.getElementById('areaModal').classList.remove('show');pendingAid=null;}
 function confirmAreaModal(){
   const name=document.getElementById('areaNameInp').value.trim()||'Area';
-  console.log('confirmAreaModal: pendingAid=',pendingAid,'name=',name,'areaNames before=',new Map(areaNames));
   if(pendingAid!=null){areaNames.set(pendingAid,{name,color:COLORS[areaNames.size%COLORS.length]});}
-  console.log('confirmAreaModal: areaNames after=',new Map(areaNames));
   document.getElementById('areaModal').classList.remove('show');pendingAid=null;
   redraw();updateStats();
 }
