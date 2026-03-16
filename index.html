@@ -197,6 +197,7 @@ header{
 }
 .nk:active{background:var(--accent-light);border-color:var(--accent);transform:scale(.93);}
 .nk.nk-dot{font-size:20px;font-weight:700;}
+.nk.nk-bs{font-size:22px;}
 
 /* CONFIRM button — full width, all caps */
 .nk-confirm{
@@ -429,7 +430,7 @@ header{
         <div class="nk" onclick="nk('1')">1</div>
         <div class="nk" onclick="nk('2')">2</div>
         <div class="nk" onclick="nk('3')">3</div>
-        <div class="nk" onclick="nk('⌫')" style="font-size:15px">⌫</div>
+        <div class="nk nk-bs" onclick="nk('⌫')">⌫</div>
         <div class="nk" onclick="nk('0')">0</div>
         <div class="nk nk-dot" onclick="nk('.')">·</div>
       </div>
@@ -742,7 +743,13 @@ function snapSeek(dir){
 // ═══════════════════════════════════════════════════════
 function compassTap(dir){
   activeDir=dir;customDeg=null;
-  document.querySelectorAll('.ck[data-d]').forEach(el=>el.classList.toggle('active',el.dataset.d===dir));
+  // Flash the button briefly then clear
+  const tapped=document.querySelector(`.ck[data-d="${dir}"]`);
+  if(tapped){
+    document.querySelectorAll('.ck[data-d]').forEach(el=>el.classList.remove('active'));
+    tapped.classList.add('active');
+    setTimeout(()=>tapped.classList.remove('active'),220);
+  }
 
   if(mode==='cursor'){
     const len=getLen();
@@ -779,6 +786,19 @@ function doConfirm(){
   mergeAreaIds();
   curX=ep.x;curY=ep.y;curPlaced=true;
   clearProv();numBuf='';updateLenDisp();
+
+  // Check if this confirm just closed a shape — if so, trigger name modal
+  const comp=getCompAtCursor();
+  if(comp&&openEnds(comp).length===0){
+    // Shape just closed — centre cursor and prompt for name
+    const pts=[...comp].map(v=>verts.get(v));
+    curX=pts.reduce((s,p)=>s+p.x,0)/pts.length;
+    curY=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    const sqft=calcCompSqft(comp);
+    pendingAid=compAid(comp);
+    showAreaModal(sqft);
+  }
+
   redraw();updateStats();updateCloseBtn();
 }
 
