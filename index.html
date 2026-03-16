@@ -595,6 +595,8 @@ function compPerim(comp){let p=0;for(const e of edges.values())if(comp.has(e.a)&
 function compAid(comp){for(const v of comp)for(const e of edges.values())if(e.a===v||e.b===v)return e.areaId;return null;}
 function mergeAreaIds(){
   for(const comp of components()){
+    // Never touch closed shapes — their areaId is locked once closed
+    if(openEnds(comp).length===0)continue;
     const cnt=new Map();
     for(const v of comp)for(const e of edges.values())if((e.a===v||e.b===v)&&comp.has(e.a)&&comp.has(e.b))cnt.set(e.areaId,(cnt.get(e.areaId)||0)+1);
     if(!cnt.size)continue;
@@ -603,6 +605,19 @@ function mergeAreaIds(){
   }
 }
 function findAid(vid){for(const e of edges.values())if(e.a===vid||e.b===vid)return e.areaId;return null;}
+
+// Like findAid but only returns an areaId if the vertex belongs to an OPEN shape.
+// Returns null if the vertex is only connected to closed shapes (or unconnected).
+function findAidOpen(vid){
+  for(const e of edges.values()){
+    if(e.a!==vid&&e.b!==vid)continue;
+    // Find the component this edge belongs to
+    for(const comp of components()){
+      if(comp.has(e.a)&&comp.has(e.b)&&openEnds(comp).length>0)return e.areaId;
+    }
+  }
+  return null;
+}
 
 // ═══════════════════════════════════════════════════════
 // APP STATE
@@ -821,7 +836,9 @@ function doConfirm(){
   pushUndo();
   const v1=addVert(curX,curY);
   const v2=addVert(ep.x,ep.y);
-  let aid=findAid(v1);if(aid===null)aid=nAid++;
+  // Use existing areaId only if v1 belongs to an open shape.
+  // If v1 is on a closed shape (or unconnected), start a fresh areaId.
+  let aid=findAidOpen(v1);if(aid===null)aid=nAid++;
   addEdge(v1,v2,aid);
   mergeAreaIds();
   curX=ep.x;curY=ep.y;curPlaced=true;
@@ -830,7 +847,6 @@ function doConfirm(){
   // Check if this confirm just closed a shape — if so, trigger name modal
   const comp=getCompAtCursor();
   if(comp&&openEnds(comp).length===0){
-    // Shape just closed — cursor stays at closing vertex (ep), prompt for name
     const sqft=calcCompSqft(comp);
     pendingAid=compAid(comp);
     showAreaModal(sqft);
@@ -850,7 +866,7 @@ function closeActiveShape(){
   if(ends.length!==2)return;
   pushUndo();
   const[e1,e2]=ends;
-  const aid=findAid(e1)||nAid++;
+  const aid=findAidOpen(e1)||nAid++;
   addEdge(e1,e2,aid);
   mergeAreaIds();
   // Cursor stays at its current position (the closing vertex) — do not move to centroid
