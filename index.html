@@ -921,26 +921,27 @@ function closeActiveShape(){
 // that pass through vertices of the new shape.
 function splitSharedEdges(newAid){
   const closed=closedAids();
+  console.log('splitSharedEdges: newAid=',newAid,'closed=',closed,'areaNames before=',new Map(areaNames));
   const newVerts=new Set([...edges.values()]
     .filter(e=>e.areaId===newAid)
     .flatMap(e=>[e.a,e.b]));
 
   for(const vid of newVerts){
     const v=verts.get(vid);
-    // Look for edges of OTHER closed areaIds that this vertex lies on
     for(const[eid,e]of[...edges]){
       if(e.areaId===newAid)continue;
       if(!closed.has(e.areaId))continue;
-      if(e.a===vid||e.b===vid)continue; // already a vertex of this edge
+      if(e.a===vid||e.b===vid)continue;
       const a=verts.get(e.a),b=verts.get(e.b);
       if(!pointOnSegment(v.x,v.y,a.x,a.y,b.x,b.y))continue;
-      // Split this edge at vid
+      console.log('  Splitting edge',eid,'(areaId',e.areaId,') at vertex',vid);
       const parentAid=e.areaId;
       edges.delete(eid);
       addEdge(e.a,vid,parentAid);
       addEdge(vid,e.b,parentAid);
     }
   }
+  console.log('splitSharedEdges done: areaNames after=',new Map(areaNames));
 }
 
 // Returns true if point (px,py) lies on segment (ax,ay)-(bx,by)
