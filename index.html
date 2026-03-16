@@ -712,30 +712,57 @@ function addProvVec(dx,dy){
   updateUrBtns();
 }
 function snapSeek(dir){
-  const deg=(customDeg!=null?customDeg:DIR_DEG[dir])*Math.PI/180;
-  const nx=Math.cos(deg),ny=Math.sin(deg);
-  const cands=[];
-  for(const[id,v]of verts){
-    const dx=v.x-curX,dy=v.y-curY;
-    const dot=dx*nx+dy*ny;
-    if(dot<0.5)continue;
-    const cross=Math.abs(dx*ny-dy*nx);
-    if(cross>1.5)continue;
-    cands.push({id,dist:dot});
+  // Diagonal directions have no snap-seek behavior
+  if(dir==='NE'||dir==='NW'||dir==='SE'||dir==='SW')return;
+
+  // Collect candidate coordinate values from ALL vertices in the drawing.
+  // N/S: collect unique Y values in the direction of travel from curY.
+  // E/W: collect unique X values in the direction of travel from curX.
+  const EPS=0.01; // floating point guard only
+  let vals=[];
+
+  if(dir==='N'){
+    // Moving up: want Y values > curY
+    for(const v of verts.values())if(v.y>curY+EPS)vals.push(v.y);
+    vals=dedup(vals).sort((a,b)=>a-b); // ascending — nearest first going up
+  }else if(dir==='S'){
+    // Moving down: want Y values < curY
+    for(const v of verts.values())if(v.y<curY-EPS)vals.push(v.y);
+    vals=dedup(vals).sort((a,b)=>b-a); // descending — nearest first going down
+  }else if(dir==='E'){
+    // Moving right: want X values > curX
+    for(const v of verts.values())if(v.x>curX+EPS)vals.push(v.x);
+    vals=dedup(vals).sort((a,b)=>a-b);
+  }else if(dir==='W'){
+    // Moving left: want X values < curX
+    for(const v of verts.values())if(v.x<curX-EPS)vals.push(v.x);
+    vals=dedup(vals).sort((a,b)=>b-a);
   }
-  cands.sort((a,b)=>a.dist-b.dist);
-  if(!cands.length)return;
-  if(provSnap&&provSnap.dir===dir){
-    provSnap.idx=(provSnap.idx+1)%cands.length;
-  }else{
-    provSnap={dir,idx:0};
+
+  if(!vals.length)return;
+
+  // Cycle index: same direction tap advances to next candidate
+  let idx=0;
+  if(provSnap&&provSnap.dir===dir&&provSnap.vals){
+    idx=(provSnap.idx+1)%vals.length;
   }
-  provSnap.cands=cands.map(c=>c.id);
-  const tv=verts.get(provSnap.cands[provSnap.idx]);
-  provVecs=[{dx:tv.x-curX,dy:tv.y-curY,snap:true}];
+  provSnap={dir,vals,idx};
+
+  // Build provisional vector to the snapped coordinate
+  const target=vals[idx];
+  let dx=0,dy=0;
+  if(dir==='N'||dir==='S') dy=target-curY;
+  else                      dx=target-curX;
+
+  provVecs=[{dx,dy,snap:true}];
   document.getElementById('provBanner').classList.add('show');
   document.getElementById('lenDisp').classList.add('prov-active');
   updateUrBtns();
+}
+
+function dedup(arr){
+  // Return array of unique values (floating point exact)
+  return [...new Set(arr.map(v=>Math.round(v*1000)/1000))].map(Number);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -790,10 +817,7 @@ function doConfirm(){
   // Check if this confirm just closed a shape — if so, trigger name modal
   const comp=getCompAtCursor();
   if(comp&&openEnds(comp).length===0){
-    // Shape just closed — centre cursor and prompt for name
-    const pts=[...comp].map(v=>verts.get(v));
-    curX=pts.reduce((s,p)=>s+p.x,0)/pts.length;
-    curY=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    // Shape just closed — cursor stays at closing vertex (ep), prompt for name
     const sqft=calcCompSqft(comp);
     pendingAid=compAid(comp);
     showAreaModal(sqft);
@@ -816,9 +840,7 @@ function closeActiveShape(){
   const aid=findAid(e1)||nAid++;
   addEdge(e1,e2,aid);
   mergeAreaIds();
-  const pts=[...comp].map(v=>verts.get(v));
-  curX=pts.reduce((s,p)=>s+p.x,0)/pts.length;
-  curY=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  // Cursor stays at its current position (the closing vertex) — do not move to centroid
   const sqft=calcCompSqft(comp);
   pendingAid=aid;showAreaModal(sqft);
   redraw();updateStats();updateCloseBtn();
