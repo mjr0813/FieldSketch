@@ -593,28 +593,71 @@ function shoelace(pts){let a=0;for(let i=0;i<pts.length;i++){const j=(i+1)%pts.l
 function signedArea(pts){let a=0;for(let i=0;i<pts.length;i++){const j=(i+1)%pts.length;a+=(pts[j].x-pts[i].x)*(pts[j].y+pts[i].y);}return a;}
 function compPerim(comp){let p=0;for(const e of edges.values())if(comp.has(e.a)&&comp.has(e.b)){const a=verts.get(e.a),b=verts.get(e.b);p+=Math.hypot(b.x-a.x,b.y-a.y);}return p;}
 function compAid(comp){for(const v of comp)for(const e of edges.values())if(e.a===v||e.b===v)return e.areaId;return null;}
+
+// Returns the set of areaIds that belong to fully closed shapes
+function closedAids(){
+  const closed=new Set();
+  // Group edges by areaId
+  const byAid=new Map();
+  for(const e of edges.values()){
+    if(!byAid.has(e.areaId))byAid.set(e.areaId,[]);
+    byAid.get(e.areaId).push(e);
+  }
+  for(const[aid,elist]of byAid){
+    // Build adjacency for just this aid's edges
+    const av=new Set();
+    for(const e of elist){av.add(e.a);av.add(e.b);}
+    const aa=new Map();
+    for(const v of av)aa.set(v,[]);
+    for(const e of elist){aa.get(e.a).push(e.b);aa.get(e.b).push(e.a);}
+    const ends=[...av].filter(v=>(aa.get(v)||[]).length===1);
+    if(ends.length===0)closed.add(aid);
+  }
+  return closed;
+}
+
 function mergeAreaIds(){
-  for(const comp of components()){
-    // Never touch closed shapes — their areaId is locked once closed
-    if(openEnds(comp).length===0)continue;
+  const closed=closedAids();
+  // Only unify edges whose areaId is NOT already a closed shape
+  // Find connected groups of non-closed edges and give each group one areaId
+  const openEdges=[...edges.entries()].filter(([,e])=>!closed.has(e.areaId));
+  if(!openEdges.length)return;
+
+  // Build adjacency only from open edges
+  const av=new Set();
+  for(const[,e]of openEdges){av.add(e.a);av.add(e.b);}
+  const aa=new Map();
+  for(const v of av)aa.set(v,[]);
+  for(const[eid,e]of openEdges){aa.get(e.a).push({v:e.b,eid});aa.get(e.b).push({v:e.a,eid});}
+
+  // Connected components of open edges only
+  const vis=new Set();
+  for(const startV of av){
+    if(vis.has(startV))continue;
+    const group=[];const q=[startV];
+    while(q.length){
+      const u=q.shift();if(vis.has(u))continue;vis.add(u);
+      for(const{v,eid}of(aa.get(u)||[])){
+        group.push(eid);
+        if(!vis.has(v))q.push(v);
+      }
+    }
+    if(!group.length)continue;
+    // Find canon areaId for this open group (most common among its edges)
     const cnt=new Map();
-    for(const v of comp)for(const e of edges.values())if((e.a===v||e.b===v)&&comp.has(e.a)&&comp.has(e.b))cnt.set(e.areaId,(cnt.get(e.areaId)||0)+1);
-    if(!cnt.size)continue;
+    for(const eid of group){const aid=edges.get(eid).areaId;cnt.set(aid,(cnt.get(aid)||0)+1);}
     const canon=[...cnt.entries()].sort((a,b)=>b[1]-a[1])[0][0];
-    for(const e of edges.values())if(comp.has(e.a)&&comp.has(e.b))e.areaId=canon;
+    for(const eid of group)edges.get(eid).areaId=canon;
   }
 }
+
 function findAid(vid){for(const e of edges.values())if(e.a===vid||e.b===vid)return e.areaId;return null;}
 
-// Like findAid but only returns an areaId if the vertex belongs to an OPEN shape.
-// Returns null if the vertex is only connected to closed shapes (or unconnected).
+// Returns areaId only if vid belongs to an open (not yet closed) shape
 function findAidOpen(vid){
+  const closed=closedAids();
   for(const e of edges.values()){
-    if(e.a!==vid&&e.b!==vid)continue;
-    // Find the component this edge belongs to
-    for(const comp of components()){
-      if(comp.has(e.a)&&comp.has(e.b)&&openEnds(comp).length>0)return e.areaId;
-    }
+    if((e.a===vid||e.b===vid)&&!closed.has(e.areaId))return e.areaId;
   }
   return null;
 }
@@ -875,13 +918,36 @@ function closeActiveShape(){
   redraw();updateStats();updateCloseBtn();
 }
 function getCompAtCursor(){
+  // Find the open-chain component (by graph) that contains the cursor vertex.
+  // We still use graph components for open chains since they haven't split yet.
   for(const comp of components()){
+    if(openEnds(comp).length===0)continue; // skip closed
     for(const vid of comp){const v=verts.get(vid);if(Math.hypot(v.x-curX,v.y-curY)<0.5)return comp;}
   }
   for(const comp of components()){if(openEnds(comp).length===2)return comp;}
   return null;
 }
+
+// Build geometry for a given areaId: {verts, adj, ends, ord, pts, closed}
+function aidGeom(aid){
+  const elist=[...edges.values()].filter(e=>e.areaId===aid);
+  const av=new Set();
+  for(const e of elist){av.add(e.a);av.add(e.b);}
+  const aa=new Map();
+  for(const v of av)aa.set(v,[]);
+  for(const e of elist){aa.get(e.a).push(e.b);aa.get(e.b).push(e.a);}
+  const ends=[...av].filter(v=>(aa.get(v)||[]).length===1);
+  const closed=ends.length===0;
+  // Order vertices
+  const start=ends.length?ends[0]:[...av][0];
+  const ord=[start],vis=new Set([start]);let cur=start;
+  while(true){const nbs=(aa.get(cur)||[]).filter(n=>!vis.has(n)&&av.has(n));if(!nbs.length)break;ord.push(nbs[0]);vis.add(nbs[0]);cur=nbs[0];}
+  const pts=ord.map(v=>verts.get(v));
+  return{av,aa,ends,closed,ord,pts};
+}
+
 function calcCompSqft(comp){
+  // For graph-component based sqft (used during active drawing)
   const ends=openEnds(comp);
   if(ends.length!==0&&ends.length!==2)return 0;
   return shoelace(orderPoly(comp).map(v=>verts.get(v)));
@@ -891,14 +957,17 @@ function calcCompSqft(comp){
 // STATS
 // ═══════════════════════════════════════════════════════
 function updateStats(){
-  const comps=components();
+  // Iterate by areaId so attached shapes with shared vertices are counted separately
+  const aids=new Set([...edges.values()].map(e=>e.areaId));
   let total=0,maxPerim=0;const named=[];
-  for(const comp of comps){
-    if(openEnds(comp).length!==0)continue;
-    const sq=calcCompSqft(comp);total+=sq;
-    const p=compPerim(comp);if(p>maxPerim)maxPerim=p;
-    const aid=compAid(comp);
-    if(aid&&areaNames.has(aid))named.push({...areaNames.get(aid),sqft:sq});
+  for(const aid of aids){
+    const g=aidGeom(aid);
+    if(!g.closed)continue;
+    const sq=shoelace(g.pts);
+    total+=sq;
+    let p=0;for(const e of edges.values())if(e.areaId===aid){const a=verts.get(e.a),b=verts.get(e.b);p+=Math.hypot(b.x-a.x,b.y-a.y);}
+    if(p>maxPerim)maxPerim=p;
+    if(areaNames.has(aid))named.push({...areaNames.get(aid),sqft:sq});
   }
   document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:1}):'—';
   document.getElementById('hPerim').textContent=maxPerim>0?maxPerim.toFixed(1):'—';
@@ -964,13 +1033,16 @@ function drawOriginMark(){
 }
 
 function drawComponents(){
-  for(const comp of components()){
-    const ends=openEnds(comp),closed=ends.length===0;
-    const aid=compAid(comp);
-    const color=(aid&&areaNames.has(aid))?areaNames.get(aid).color:COLORS[(aid||0)%COLORS.length];
-    const ord=orderPoly(comp),pts=ord.map(v=>verts.get(v));
+  // Draw each areaId as its own independent shape
+  const aids=new Set([...edges.values()].map(e=>e.areaId));
+  for(const aid of aids){
+    const g=aidGeom(aid);
+    const{closed,ord,pts}=g;
+    if(pts.length<2)continue;
+    const color=(areaNames.has(aid))?areaNames.get(aid).color:COLORS[(aid-1)%COLORS.length];
     const cw=signedArea(pts)<0;
 
+    // Fill
     if(showFill&&pts.length>=3){
       ctx.save();ctx.beginPath();
       const s0=w2s(pts[0].x,pts[0].y);ctx.moveTo(s0.x,s0.y);
@@ -979,9 +1051,10 @@ function drawComponents(){
       ctx.fillStyle=h2r(color,closed?0.09:0.04);ctx.fill();ctx.restore();
     }
 
+    // Walls — draw only this areaId's edges
     ctx.save();ctx.strokeStyle=closed?color:'#2a5c84';ctx.lineWidth=2;ctx.lineJoin='round';
-    for(const[,e]of edges){
-      if(!comp.has(e.a)||!comp.has(e.b))continue;
+    for(const e of edges.values()){
+      if(e.areaId!==aid)continue;
       const sa=w2s(verts.get(e.a).x,verts.get(e.a).y),sb=w2s(verts.get(e.b).x,verts.get(e.b).y);
       ctx.beginPath();ctx.moveTo(sa.x,sa.y);ctx.lineTo(sb.x,sb.y);ctx.stroke();
     }
@@ -990,24 +1063,22 @@ function drawComponents(){
     if(showDims)drawDims(ord,pts,cw^dimFlipped,closed);
     if(showAngles&&closed)drawAngles(pts);
 
-    if(closed&&aid&&areaNames.has(aid)){
-      // Use proper polygon area centroid (weighted, not vertex average)
-      const {cx,cy}=polyCentroid(pts);
+    // Area label
+    if(closed&&areaNames.has(aid)){
+      const{cx,cy}=polyCentroid(pts);
       const sc=w2s(cx,cy);
-      const sqft=calcCompSqft(comp);
-      ctx.save();
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      // Name line
+      const sqft=shoelace(pts);
+      ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.font=`600 11px 'Source Sans 3',sans-serif`;
       ctx.fillStyle=h2r(color,0.6);
       ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y-8);
-      // Sqft line
       ctx.font=`400 10px 'DM Mono',monospace`;
       ctx.fillStyle=h2r(color,0.45);
       ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²',sc.x,sc.y+7);
       ctx.restore();
     }
 
+    // Vertices
     ord.forEach((vid,i)=>{
       const v=verts.get(vid),s=w2s(v.x,v.y);
       const isEnd=!closed&&(i===0||i===ord.length-1),r=isEnd?6:4;
