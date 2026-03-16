@@ -962,10 +962,21 @@ function drawComponents(){
     if(showAngles&&closed)drawAngles(pts);
 
     if(closed&&aid&&areaNames.has(aid)){
-      const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length,cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+      // Use proper polygon area centroid (weighted, not vertex average)
+      const {cx,cy}=polyCentroid(pts);
       const sc=w2s(cx,cy);
-      ctx.save();ctx.font=`600 11px 'Source Sans 3',sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillStyle=h2r(color,0.55);ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y);ctx.restore();
+      const sqft=calcCompSqft(comp);
+      ctx.save();
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      // Name line
+      ctx.font=`600 11px 'Source Sans 3',sans-serif`;
+      ctx.fillStyle=h2r(color,0.6);
+      ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y-8);
+      // Sqft line
+      ctx.font=`400 10px 'DM Mono',monospace`;
+      ctx.fillStyle=h2r(color,0.45);
+      ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²',sc.x,sc.y+7);
+      ctx.restore();
     }
 
     ord.forEach((vid,i)=>{
@@ -983,13 +994,29 @@ function drawComponents(){
 function drawDims(ord,pts,outside,closed){
   if(pts.length<2)return;
   const n=closed?pts.length:pts.length-1;
+
+  // Build set of provisional vertex pairs to skip (avoid doubling with drawProvisional)
+  const provPairs=new Set();
+  if(hasProvisional()){
+    const ep=provEnd();
+    // Key: rounded coords of both endpoints
+    const k=(ax,ay,bx,by)=>`${Math.round(ax*100)},${Math.round(ay*100)}-${Math.round(bx*100)},${Math.round(by*100)}`;
+    provPairs.add(k(curX,curY,ep.x,ep.y));
+    provPairs.add(k(ep.x,ep.y,curX,curY));
+  }
+
   ctx.save();ctx.font=`400 9px 'DM Mono',monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
   for(let i=0;i<n;i++){
     const a=pts[i],b=pts[(i+1)%pts.length];
+
+    // Skip if this edge is the current provisional wall
+    const k=`${Math.round(a.x*100)},${Math.round(a.y*100)}-${Math.round(b.x*100)},${Math.round(b.y*100)}`;
+    if(provPairs.has(k))continue;
+
     const sa=w2s(a.x,a.y),sb=w2s(b.x,b.y);
     const mx=(sa.x+sb.x)/2,my=(sa.y+sb.y)/2;
     const dx=sb.x-sa.x,dy=sb.y-sa.y,lp=Math.hypot(dx,dy);
-    if(lp<22)continue;
+    // Always draw — no minimum length threshold
     const flip=outside?1:-1;
     const nx=(dy/lp)*12*flip,ny=(-dx/lp)*12*flip;
     const dist=Math.hypot(b.x-a.x,b.y-a.y),label=fmtDist(dist);
@@ -1362,6 +1389,21 @@ function exportPNG(){
 // UTILS
 // ═══════════════════════════════════════════════════════
 function fmtDist(ft){return(Math.round(ft*10)/10).toFixed(1)+"'";}
+function polyCentroid(pts){
+  // Weighted polygon centroid — correct for irregular shapes
+  let ax=0,ay=0,area=0;
+  const n=pts.length;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    const cross=pts[i].x*pts[j].y-pts[j].x*pts[i].y;
+    ax+=(pts[i].x+pts[j].x)*cross;
+    ay+=(pts[i].y+pts[j].y)*cross;
+    area+=cross;
+  }
+  area/=2;
+  if(Math.abs(area)<0.001)return{cx:pts.reduce((s,p)=>s+p.x,0)/n,cy:pts.reduce((s,p)=>s+p.y,0)/n};
+  return{cx:ax/(6*area),cy:ay/(6*area)};
+}
 function h2r(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${a})`;}
 function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 
