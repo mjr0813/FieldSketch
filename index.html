@@ -399,7 +399,7 @@ header{
       <div class="ao-title">Named Areas</div>
       <div id="aoList"></div>
       <div class="ao-total">
-        <span class="ao-total-lbl">GLA</span>
+        <span class="ao-total-lbl">Total</span>
         <span class="ao-total-val" id="glaVal">0 ft²</span>
       </div>
     </div>
@@ -1073,8 +1073,8 @@ function drawProvisional(){
     ctx.fillStyle='rgba(253,243,227,0.95)';rrect(ctx,-tw/2-4,-8,tw+8,16,4);ctx.fill();
     ctx.fillStyle='#c47a1a';ctx.fillText(label,0,0);ctx.restore();
   }
-  // Rise/run components
-  if(provVecs.length>1||(provVecs.length===1&&!provVecs[0].snap)){
+  // Rise/run components — only shown when 2+ vectors are accumulated
+  if(provVecs.length>1){
     let rx=curX,ry=curY;
     for(const v of provVecs){
       const nx2=rx+v.dx,ny2=ry+v.dy;
