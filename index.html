@@ -172,19 +172,19 @@ header{
 .ip-sec{padding:9px 10px 8px;border-bottom:1px solid var(--border2);}
 .ip-lbl{font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
 
-/* Length display — cursor LEFT of number */
+/* Length display — number right-justified, cursor between number and ft */
 .len-disp{
   font-family:'DM Mono',monospace;font-size:26px;font-weight:300;
   color:var(--text);background:var(--surface2);border:1.5px solid var(--border);
   border-radius:8px;padding:7px 10px;
-  display:flex;align-items:center;justify-content:flex-start;
-  gap:2px;line-height:1;min-height:48px;transition:border-color .15s;
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:0px;line-height:1;min-height:48px;transition:border-color .15s;
 }
 .len-disp.prov-active{border-color:var(--prov);background:var(--prov-light);}
-/* cursor | number  ft */
-.ld-cursor{width:2px;height:22px;background:var(--accent);border-radius:1px;animation:blink 1s step-end infinite;flex-shrink:0;}
-.ld-num{color:var(--text);flex:1;text-align:right;}
-.ld-unit{font-size:12px;color:var(--muted);font-weight:400;align-self:flex-end;padding-bottom:2px;margin-left:2px;flex-shrink:0;}
+/* number | cursor | ft */
+.ld-num{color:var(--text);text-align:right;}
+.ld-cursor{width:2px;height:22px;background:var(--accent);border-radius:1px;animation:blink 1s step-end infinite;flex-shrink:0;margin:0 3px;}
+.ld-unit{font-size:12px;color:var(--muted);font-weight:400;align-self:flex-end;padding-bottom:2px;flex-shrink:0;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
 /* Numpad */
@@ -411,8 +411,8 @@ header{
     <div class="ip-sec">
       <div class="ip-lbl">Wall Length</div>
       <div class="len-disp" id="lenDisp">
-        <span class="ld-cursor"></span>
         <span class="ld-num" id="ldNum"></span>
+        <span class="ld-cursor"></span>
         <span class="ld-unit">ft</span>
       </div>
     </div>
@@ -432,7 +432,6 @@ header{
         <div class="nk" onclick="nk('⌫')" style="font-size:15px">⌫</div>
         <div class="nk" onclick="nk('0')">0</div>
         <div class="nk nk-dot" onclick="nk('.')">·</div>
-        <button class="nk-confirm" onclick="doConfirm()">CONFIRM</button>
       </div>
     </div>
 
@@ -483,6 +482,7 @@ header{
           <span class="ck-deg">315°</span>
         </div>
       </div>
+      <button class="nk-confirm" onclick="doConfirm()" style="width:100%;margin-top:6px">CONFIRM</button>
     </div>
 
     <!-- 4. Panel actions: Undo/Redo, Close Shape, Flip Dims -->
