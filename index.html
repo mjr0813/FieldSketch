@@ -1519,7 +1519,9 @@ function chipSel(el,name){
 function cancelAreaModal(){document.getElementById('areaModal').classList.remove('show');pendingAid=null;}
 function confirmAreaModal(){
   const name=document.getElementById('areaNameInp').value.trim()||'Area';
+  console.log('confirmAreaModal: pendingAid=',pendingAid,'name=',name,'areaNames before=',new Map(areaNames));
   if(pendingAid!=null){areaNames.set(pendingAid,{name,color:COLORS[areaNames.size%COLORS.length]});}
+  console.log('confirmAreaModal: areaNames after=',new Map(areaNames));
   document.getElementById('areaModal').classList.remove('show');pendingAid=null;
   redraw();updateStats();
 }
