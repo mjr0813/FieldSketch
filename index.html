@@ -1092,10 +1092,12 @@ function drawOriginMark(){
 }
 
 function drawComponents(){
-  // Draw each areaId as its own independent shape
   const aids=new Set([...edges.values()].map(e=>e.areaId));
   for(const aid of aids){
     const g=aidGeom(aid);
+    if(areaNames.has(aid)){
+      console.log(`drawComponents aid=${aid} closed=${g.closed} pts=${g.pts.length} ends=${g.ends.length}`);
+    }
     const{closed,ord,pts}=g;
     if(pts.length<2)continue;
     const color=(areaNames.has(aid))?areaNames.get(aid).color:COLORS[(aid-1)%COLORS.length];
