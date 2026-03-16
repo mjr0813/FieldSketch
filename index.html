@@ -888,7 +888,8 @@ function doConfirm(){
   // Check if the areaId we just drew into is now closed
   const g=aidGeom(aid);
   if(g.closed&&g.pts.length>=3){
-    const sqft=shoelace(g.pts);
+    splitSharedEdges(aid);
+    const sqft=shoelace(aidGeom(aid).pts);
     pendingAid=aid;
     showAreaModal(sqft);
   }
@@ -901,7 +902,6 @@ function doConfirm(){
 // ═══════════════════════════════════════════════════════
 function closeActiveShape(){
   if(hasProvisional())doConfirm();
-  // Find the open areaId chain at the cursor
   const aid=getOpenAidAtCursor();
   if(aid===null)return;
   const g=aidGeom(aid);
@@ -910,10 +910,49 @@ function closeActiveShape(){
   const[e1,e2]=g.ends;
   addEdge(e1,e2,aid);
   mergeAreaIds();
+  splitSharedEdges(aid);
   const g2=aidGeom(aid);
   const sqft=shoelace(g2.pts);
   pendingAid=aid;showAreaModal(sqft);
   redraw();updateStats();updateCloseBtn();
+}
+
+// When a new shape closes, split any edges of OTHER closed shapes
+// that pass through vertices of the new shape.
+function splitSharedEdges(newAid){
+  const closed=closedAids();
+  const newVerts=new Set([...edges.values()]
+    .filter(e=>e.areaId===newAid)
+    .flatMap(e=>[e.a,e.b]));
+
+  for(const vid of newVerts){
+    const v=verts.get(vid);
+    // Look for edges of OTHER closed areaIds that this vertex lies on
+    for(const[eid,e]of[...edges]){
+      if(e.areaId===newAid)continue;
+      if(!closed.has(e.areaId))continue;
+      if(e.a===vid||e.b===vid)continue; // already a vertex of this edge
+      const a=verts.get(e.a),b=verts.get(e.b);
+      if(!pointOnSegment(v.x,v.y,a.x,a.y,b.x,b.y))continue;
+      // Split this edge at vid
+      const parentAid=e.areaId;
+      edges.delete(eid);
+      addEdge(e.a,vid,parentAid);
+      addEdge(vid,e.b,parentAid);
+    }
+  }
+}
+
+// Returns true if point (px,py) lies on segment (ax,ay)-(bx,by)
+// within a small epsilon
+function pointOnSegment(px,py,ax,ay,bx,by){
+  const EPS=0.01;
+  const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
+  if(len2<EPS)return false;
+  const t=((px-ax)*dx+(py-ay)*dy)/len2;
+  if(t<EPS||t>1-EPS)return false; // not between endpoints
+  const cx=ax+t*dx,cy=ay+t*dy;
+  return Math.hypot(px-cx,py-cy)<EPS;
 }
 
 // Returns the areaId of an open chain that contains the cursor position, or null
