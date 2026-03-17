@@ -87,7 +87,108 @@ header{
 .hbtn:active{transform:scale(.96);opacity:.8;}
 .hbtn.danger{background:var(--danger-light);color:var(--danger);border-color:rgba(122,42,42,.2);}
 
-/* ── TOOLBAR ───────────────────────────────────────── */
+/* ── FILE MANAGEMENT ──────────────────────────────── */
+.file-block{
+  display:flex;align-items:center;gap:6px;padding:0 12px;
+  border-right:1px solid var(--border2);height:100%;flex-shrink:0;
+}
+.fname-display{
+  font-family:'Playfair Display',serif;font-size:13px;font-weight:600;
+  color:var(--text2);white-space:nowrap;max-width:140px;
+  overflow:hidden;text-overflow:ellipsis;cursor:default;
+}
+.fname-display.untitled{color:var(--muted);font-style:italic;}
+.fname-display.dirty{color:var(--text);}
+.save-btn{
+  width:30px;height:28px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+.save-btn svg{width:13px;height:13px;}
+.save-btn:active{transform:scale(.93);}
+.save-btn.dirty{background:var(--accent-light);color:var(--accent);border-color:rgba(42,92,132,.3);}
+.files-btn{
+  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:600;
+  padding:5px 10px;border-radius:7px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;gap:4px;transition:all .13s;white-space:nowrap;
+}
+.files-btn svg{width:11px;height:11px;}
+.files-btn:active{transform:scale(.96);}
+
+/* Files modal */
+.files-overlay{
+  position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(5px);
+  z-index:400;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.files-overlay.show{opacity:1;pointer-events:all;}
+.files-modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  padding:24px;width:min(440px,92vw);max-height:80vh;
+  display:flex;flex-direction:column;gap:16px;
+  box-shadow:var(--shadow-lg);
+  transform:scale(.95) translateY(8px);transition:transform .2s;
+}
+.files-overlay.show .files-modal{transform:scale(1) translateY(0);}
+.files-modal-title{
+  font-family:'Playfair Display',serif;font-size:18px;font-weight:700;
+}
+.files-list{
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;
+  max-height:50vh;
+}
+.files-list::-webkit-scrollbar{display:none;}
+.file-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:10px;border:1px solid var(--border2);
+  background:var(--surface2);cursor:pointer;transition:all .12s;
+}
+.file-row:active{background:var(--accent-light);}
+.file-row.current{border-color:rgba(42,92,132,.35);background:var(--accent-light);}
+.file-row-info{flex:1;min-width:0;}
+.file-row-name{
+  font-family:'Playfair Display',serif;font-size:14px;font-weight:600;
+  color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.file-row-meta{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;}
+.file-row-del{
+  width:28px;height:28px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .12s;
+}
+.file-row-del:active{background:var(--danger-light);color:var(--danger);border-color:rgba(122,42,42,.2);}
+.file-row-del svg{width:11px;height:11px;}
+.files-empty{
+  text-align:center;padding:24px;color:var(--muted);
+  font-size:13px;font-style:italic;
+}
+.files-modal-btns{display:flex;gap:8px;}
+
+/* Save name prompt */
+.save-prompt{
+  position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(5px);
+  z-index:500;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.save-prompt.show{opacity:1;pointer-events:all;}
+.save-modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:22px;width:min(340px,88vw);box-shadow:var(--shadow-lg);
+  transform:scale(.95) translateY(8px);transition:transform .2s;
+}
+.save-prompt.show .save-modal{transform:scale(1) translateY(0);}
+.save-modal h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:14px;}
+.save-inp{
+  font-family:'Source Sans 3',sans-serif;font-size:15px;
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;
+  background:var(--surface2);color:var(--text);outline:none;margin-bottom:14px;
+  touch-action:auto;user-select:text;-webkit-user-select:text;
+}
+.save-inp:focus{border-color:var(--accent);}
+
 .toolbar{
   height:var(--toolbar-h);background:var(--surface);border-bottom:1px solid var(--border);
   display:flex;align-items:center;gap:4px;padding:0 10px;flex-shrink:0;z-index:100;
@@ -359,6 +460,23 @@ header{
     <div class="logo-text">Field<em>Sketch</em></div>
   </div>
 
+  <!-- File management block -->
+  <div class="file-block">
+    <button class="files-btn" onclick="showFilesModal()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3.5h4l1.5 2H12v6H2z"/></svg>
+      Files
+    </button>
+    <button class="save-btn" id="saveBtn" onclick="quickSave()" title="Save">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+        <rect x="2" y="2" width="10" height="10" rx="1"/>
+        <rect x="4.5" y="2" width="5" height="3.5" rx=".5"/>
+        <rect x="4" y="7" width="6" height="4" rx=".5"/>
+        <path d="M5.5 3h2"/>
+      </svg>
+    </button>
+    <div class="fname-display untitled" id="fnameDisplay">Untitled</div>
+  </div>
+
   <div class="header-stats">
     <div class="hstat">
       <div class="hstat-val" id="hSqft">—</div>
@@ -603,6 +721,33 @@ header{
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="cancelAreaModal()">Cancel</button>
       <button class="mbtn mbtn-accent" onclick="confirmAreaModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Files modal -->
+<div class="files-overlay" id="filesOverlay">
+  <div class="files-modal">
+    <div class="files-modal-title">Drawings</div>
+    <div class="files-list" id="filesList"></div>
+    <div class="files-modal-btns">
+      <button class="mbtn mbtn-ghost" onclick="newDrawing()" style="flex:1">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-right:4px"><path d="M7 2v10M2 7h10"/></svg>
+        New Drawing
+      </button>
+      <button class="mbtn mbtn-ghost" onclick="hideFilesModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save name prompt -->
+<div class="save-prompt" id="savePrompt">
+  <div class="save-modal">
+    <h3>Save Drawing</h3>
+    <input type="text" class="save-inp" id="saveInp" placeholder="Drawing name…">
+    <div class="modal-btns">
+      <button class="mbtn mbtn-ghost" onclick="hideSavePrompt()">Cancel</button>
+      <button class="mbtn mbtn-accent" onclick="confirmSave()">Save</button>
     </div>
   </div>
 </div>
@@ -2014,12 +2159,197 @@ function h2r(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5
 function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 
 // ═══════════════════════════════════════════════════════
+// FILE MANAGEMENT
+// ═══════════════════════════════════════════════════════
+const LS_KEY='fieldsketch_files'; // localStorage key
+
+let currentFileId=null;  // id of currently open file, or null
+let isDirty=false;       // unsaved changes flag
+
+function markDirty(){
+  if(!isDirty){isDirty=true;updateFileUI();}
+}
+function markClean(){
+  isDirty=false;updateFileUI();
+}
+
+function updateFileUI(){
+  const btn=document.getElementById('saveBtn');
+  const disp=document.getElementById('fnameDisplay');
+  const file=currentFileId?getFile(currentFileId):null;
+  const name=file?file.name:null;
+
+  if(name){
+    disp.textContent=name;
+    disp.className='fname-display'+(isDirty?' dirty':'');
+  }else{
+    disp.textContent='Untitled';
+    disp.className='fname-display untitled';
+  }
+  btn.className='save-btn'+(isDirty?' dirty':'');
+}
+
+// ── localStorage helpers ─────────────────────────────
+function allFiles(){
+  try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}
+  catch{return[];}
+}
+function saveFiles(files){localStorage.setItem(LS_KEY,JSON.stringify(files));}
+function getFile(id){return allFiles().find(f=>f.id===id)||null;}
+
+function saveDrawingData(id,name){
+  const files=allFiles();
+  const data={
+    id,name,
+    savedAt:Date.now(),
+    verts:[...verts.entries()],
+    edges:[...edges.entries()],
+    areaNames:[...areaNames.entries()],
+    nVid,nEid,nAid
+  };
+  const idx=files.findIndex(f=>f.id===id);
+  if(idx>=0)files[idx]=data;else files.unshift(data);
+  saveFiles(files);
+}
+
+function loadDrawingData(data){
+  verts=new Map(data.verts);
+  edges=new Map(data.edges);
+  areaNames=new Map(data.areaNames);
+  nVid=data.nVid;nEid=data.nEid;nAid=data.nAid;
+  curPlaced=false;clearProv();
+  numBuf='';selBuf='';selWallEid=null;selAid=null;
+  undoStack=[];redoStack=[];
+  updateLenDisp();updateUrBtns();
+  setMode('draw');
+  fitScreen();
+  redraw();updateStats();updateCloseBtn();
+}
+
+// ── Quick save ───────────────────────────────────────
+function quickSave(){
+  if(!isDirty)return;
+  if(currentFileId&&getFile(currentFileId)){
+    // Overwrite existing
+    const name=getFile(currentFileId).name;
+    saveDrawingData(currentFileId,name);
+    markClean();
+  }else{
+    // New file — prompt for name
+    showSavePrompt();
+  }
+}
+
+// ── Save prompt ──────────────────────────────────────
+function showSavePrompt(callback){
+  document._saveCallback=callback||null;
+  const file=currentFileId?getFile(currentFileId):null;
+  document.getElementById('saveInp').value=file?file.name:'';
+  document.getElementById('savePrompt').classList.add('show');
+  setTimeout(()=>document.getElementById('saveInp').focus(),200);
+}
+function hideSavePrompt(){
+  document.getElementById('savePrompt').classList.remove('show');
+  document._saveCallback=null;
+}
+function confirmSave(){
+  const name=document.getElementById('saveInp').value.trim();
+  if(!name)return;
+  if(!currentFileId)currentFileId='fs_'+Date.now();
+  saveDrawingData(currentFileId,name);
+  markClean();
+  hideSavePrompt();
+  if(document._saveCallback)document._saveCallback();
+  renderFilesList();
+}
+document.getElementById('saveInp').addEventListener('keydown',e=>{
+  if(e.key==='Enter')confirmSave();
+});
+
+// ── Files modal ──────────────────────────────────────
+function showFilesModal(){
+  renderFilesList();
+  document.getElementById('filesOverlay').classList.add('show');
+}
+function hideFilesModal(){
+  document.getElementById('filesOverlay').classList.remove('show');
+}
+
+function renderFilesList(){
+  const files=allFiles();
+  const list=document.getElementById('filesList');
+  if(!files.length){
+    list.innerHTML='<div class="files-empty">No saved drawings yet.</div>';
+    return;
+  }
+  list.innerHTML=files.map(f=>{
+    const d=new Date(f.savedAt);
+    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    const isCurrent=f.id===currentFileId;
+    const edgeCount=f.edges?f.edges.length:0;
+    return`<div class="file-row${isCurrent?' current':''}" onclick="openFile('${f.id}')">
+      <div class="file-row-info">
+        <div class="file-row-name">${f.name}</div>
+        <div class="file-row-meta">${dateStr} ${timeStr} · ${edgeCount} walls</div>
+      </div>
+      <button class="file-row-del" onclick="event.stopPropagation();deleteFile('${f.id}')" title="Delete">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function openFile(id){
+  if(isDirty){
+    if(!confirm('You have unsaved changes. Discard and open?'))return;
+  }
+  const file=getFile(id);
+  if(!file)return;
+  currentFileId=id;
+  loadDrawingData(file);
+  markClean();
+  hideFilesModal();
+}
+
+function deleteFile(id){
+  if(!confirm('Delete this drawing?'))return;
+  const files=allFiles().filter(f=>f.id!==id);
+  saveFiles(files);
+  if(currentFileId===id){currentFileId=null;isDirty=false;updateFileUI();}
+  renderFilesList();
+}
+
+function newDrawing(){
+  if(isDirty){
+    if(!confirm('You have unsaved changes. Discard and start new?'))return;
+  }
+  verts.clear();edges.clear();areaNames.clear();
+  nVid=1;nEid=1;nAid=1;curPlaced=false;
+  clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
+  undoStack=[];redoStack=[];
+  currentFileId=null;
+  markClean();
+  updateLenDisp();updateUrBtns();
+  setMode('draw');
+  redraw();updateStats();updateCloseBtn();
+  hideFilesModal();
+}
+
+// ── Dirty tracking — wrap all mutation points ────────
+// We patch pushUndo to mark dirty since every confirmed
+// drawing action goes through pushUndo.
+const _origPushUndo=pushUndo;
+function pushUndo(){_origPushUndo();markDirty();}
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 setMode('draw');
 updateLenDisp();
 updateStats();
 updateUrBtns();
+updateFileUI();
 </script>
 </body>
 </html>
