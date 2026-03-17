@@ -855,6 +855,7 @@ header{
 // ═══════════════════════════════════════════════════════
 const LS_KEY='fieldsketch_files';
 const LS_PRESETS='fieldsketch_presets';
+const LS_AUTOSAVE='fieldsketch_autosave';
 let PRESETS=loadPresets();
 const COLORS  = ['#2a5c84','#7a4528','#2a6348','#6a2a7a','#7a6a1a','#1a6a7a','#7a1a5a','#4a7a1a','#7a3a1a','#3a3a8a'];
 const DIR_DEG = {N:90,NE:45,E:0,SE:315,S:270,SW:225,W:180,NW:135};
@@ -1001,7 +1002,7 @@ function snapshot(){
     nVid,nEid,nAid,curX,curY,curPlaced,dimFlipped
   };
 }
-function pushUndo(){undoStack.push(snapshot());redoStack=[];updateUrBtns();markDirty();}
+function pushUndo(){undoStack.push(snapshot());redoStack=[];updateUrBtns();markDirty();autoSave();}
 function restoreSnap(s){
   verts=s.verts;edges=s.edges;areaNames=s.areaNames;
   nVid=s.nVid;nEid=s.nEid;nAid=s.nAid;
@@ -2212,7 +2213,7 @@ function confirmAreaModal(){
   if(pendingAid!=null){
     const existingColor=areaNames.has(pendingAid)?areaNames.get(pendingAid).color:COLORS[areaNames.size%COLORS.length];
     areaNames.set(pendingAid,{name,color:existingColor});
-    markDirty();
+    markDirty();autoSave();
   }
   document.getElementById('areaModal').classList.remove('show');
   document.getElementById('chipEditor').classList.remove('open');
@@ -2322,6 +2323,32 @@ function updateFileUI(){
   btn.className='save-btn'+(isDirty?' dirty':'');
 }
 
+// ── Autosave ─────────────────────────────────────────
+// Writes current drawing to localStorage after every action.
+// Restored silently on page load so refresh is non-destructive on iOS.
+function autoSave(){
+  try{
+    const data={
+      currentFileId,
+      ...drawingSnapshot()
+    };
+    localStorage.setItem(LS_AUTOSAVE,JSON.stringify(data));
+  }catch(e){/* storage full or unavailable — fail silently */}
+}
+
+function restoreAutosave(){
+  try{
+    const raw=localStorage.getItem(LS_AUTOSAVE);
+    if(!raw)return false;
+    const data=JSON.parse(raw);
+    if(!data.verts||!data.edges)return false;
+    restoreDrawingData(data);
+    if(data.currentFileId)currentFileId=data.currentFileId;
+    // Don't markClean — there may still be unsaved changes
+    return true;
+  }catch{return false;}
+}
+
 // ── localStorage helpers ─────────────────────────────
 function allFiles(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch{return[];}}
 function saveFiles(files){localStorage.setItem(LS_KEY,JSON.stringify(files));}
@@ -2381,6 +2408,7 @@ function confirmSave(){
   if(!currentFileId)currentFileId='fs_'+Date.now();
   saveDrawingData(currentFileId,name);
   markClean();
+  autoSave(); // update autosave with new currentFileId
   hideSavePrompt();
   renderFilesList();
 }
@@ -2504,6 +2532,7 @@ function newDrawing(){
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
   undoStack=[];redoStack=[];
   currentFileId=null;
+  localStorage.removeItem(LS_AUTOSAVE);
   markClean();
   updateLenDisp();updateUrBtns();
   setMode('draw');
@@ -2557,11 +2586,15 @@ function removePreset(i){
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
-setMode('draw');
+// Attempt to restore from autosave (handles iOS refresh)
+if(!restoreAutosave()){
+  setMode('draw');
+}
 updateLenDisp();
 updateStats();
 updateUrBtns();
 updateFileUI();
+fitScreen();
 // Always warn before leaving — refresh and tab close are the nuke button
 window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 </script>
