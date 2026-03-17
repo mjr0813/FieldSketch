@@ -2302,11 +2302,9 @@ let isDirty=false;
 
 function markDirty(){
   if(!isDirty){isDirty=true;updateFileUI();}
-  window.onbeforeunload=()=>'You have unsaved changes.';
 }
 function markClean(){
   isDirty=false;updateFileUI();
-  window.onbeforeunload=null;
 }
 
 function updateFileUI(){
@@ -2555,6 +2553,17 @@ function removePreset(i){
 }
 
 // ── Dirty tracking ───────────────────────────────────
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+setMode('draw');
+updateLenDisp();
+updateStats();
+updateUrBtns();
+updateFileUI();
+// Always warn before leaving — refresh and tab close are the nuke button
+window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 </script>
 </body>
 </html>
