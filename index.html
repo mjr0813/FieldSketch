@@ -904,7 +904,7 @@ function snapshot(){
     nVid,nEid,nAid,curX,curY,curPlaced,dimFlipped
   };
 }
-function pushUndo(){undoStack.push(snapshot());redoStack=[];updateUrBtns();}
+function pushUndo(){undoStack.push(snapshot());redoStack=[];updateUrBtns();markDirty();}
 function restoreSnap(s){
   verts=s.verts;edges=s.edges;areaNames=s.areaNames;
   nVid=s.nVid;nEid=s.nEid;nAid=s.nAid;
@@ -2337,10 +2337,6 @@ function newDrawing(){
 }
 
 // ── Dirty tracking — wrap all mutation points ────────
-// We patch pushUndo to mark dirty since every confirmed
-// drawing action goes through pushUndo.
-const _origPushUndo=pushUndo;
-function pushUndo(){_origPushUndo();markDirty();}
 
 // ═══════════════════════════════════════════════════════
 // INIT
