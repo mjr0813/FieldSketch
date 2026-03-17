@@ -2374,9 +2374,10 @@ function saveDrawingData(id,name){
 }
 
 function restoreDrawingData(data){
-  verts=new Map(data.verts);
-  edges=new Map(data.edges);
-  areaNames=new Map(data.areaNames);
+  // JSON parse turns integer Map keys into strings — coerce back to int
+  verts=new Map(data.verts.map(([k,v])=>[+k,v]));
+  edges=new Map(data.edges.map(([k,e])=>[+k,e]));
+  areaNames=new Map(data.areaNames.map(([k,v])=>[+k,v]));
   nVid=data.nVid;nEid=data.nEid;nAid=data.nAid;
   curPlaced=false;clearProv();
   numBuf='';selBuf='';selWallEid=null;selAid=null;
