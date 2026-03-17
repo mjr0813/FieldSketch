@@ -234,10 +234,12 @@ header{
 .mchip-x:active{background:var(--danger-light);color:var(--danger);}
 .edit-labels-toggle{
   font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;
-  font-family:'Source Sans 3',sans-serif;font-weight:600;text-decoration:underline;
-  padding:3px 0;display:block;margin-top:5px;
+  font-family:'Source Sans 3',sans-serif;font-weight:700;
+  padding:4px 0;display:flex;align-items:center;gap:4px;margin-top:6px;
+  opacity:.8;
 }
-.edit-labels-toggle:active{opacity:.7;}
+.edit-labels-toggle:active{opacity:1;}
+.edit-labels-toggle svg{width:11px;height:11px;flex-shrink:0;}
 
 
 
@@ -772,7 +774,10 @@ header{
     <div class="modal-title">Name This Area</div>
     <div class="modal-sub" id="areaModalSub">Select a type or enter a custom name</div>
     <div class="modal-chips" id="areaChips"></div>
-    <button class="edit-labels-toggle" onclick="toggleLabelEditor()">Edit labels…</button>
+    <button class="edit-labels-toggle" onclick="toggleLabelEditor()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
+      Edit Labels
+    </button>
     <div class="chip-editor" id="chipEditor">
       <div class="chip-editor-row">
         <input type="text" class="chip-edit-inp" id="chipEditInp" placeholder="New label…">
@@ -848,6 +853,8 @@ header{
 // ═══════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════
+const LS_KEY='fieldsketch_files';
+const LS_PRESETS='fieldsketch_presets';
 let PRESETS=loadPresets();
 const COLORS  = ['#2a5c84','#7a4528','#2a6348','#6a2a7a','#7a6a1a','#1a6a7a','#7a1a5a','#4a7a1a','#7a3a1a','#3a3a8a'];
 const DIR_DEG = {N:90,NE:45,E:0,SE:315,S:270,SW:225,W:180,NW:135};
@@ -2244,7 +2251,7 @@ function exportPreview(){
     const name=_exportName();
     const win=window.open('','_blank');
     if(win){
-      win.document.write(`<!DOCTYPE html><html><head><title>${name}</title></head><body style="margin:0;background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${dataUrl}" style="max-width:100%;height:auto" alt="${name}"></body></html>`);
+      win.document.write(`<!DOCTYPE html><html><head><title>${name}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh;}img{max-width:100%;height:auto;}@media print{body{background:white;display:block;}img{width:100%;height:auto;page-break-inside:avoid;}}</style></head><body><img src="${dataUrl}" alt="${name}"></body></html>`);
       win.document.close();
     }
   });
@@ -2289,9 +2296,6 @@ function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r
 // ═══════════════════════════════════════════════════════
 // FILE MANAGEMENT
 // ═══════════════════════════════════════════════════════
-const LS_KEY='fieldsketch_files';
-const LS_PRESETS='fieldsketch_presets';
-
 let currentFileId=null;
 let isDirty=false;
 
@@ -2390,7 +2394,7 @@ function confirmArchive(){
   const file=currentFileId?getFile(currentFileId):null;
   const name=file?file.name:'Untitled';
   const data=JSON.stringify({name,...drawingSnapshot()},null,2);
-  const blob=new Blob([data],{type:'application/json'});
+  const blob=new Blob([data],{type:'application/octet-stream'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download=name+'.fsk';
@@ -2467,7 +2471,7 @@ function openFile(id){
 function archiveFile(id){
   const file=getFile(id);if(!file)return;
   const data=JSON.stringify({name:file.name,verts:file.verts,edges:file.edges,areaNames:file.areaNames,nVid:file.nVid,nEid:file.nEid,nAid:file.nAid},null,2);
-  const blob=new Blob([data],{type:'application/json'});
+  const blob=new Blob([data],{type:'application/octet-stream'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;a.download=file.name+'.fsk';
@@ -2485,7 +2489,11 @@ function deleteFile(id){
 }
 
 function newDrawing(){
-  if(!confirm('Start a new drawing? Your current drawing will remain saved.'))return;
+  if(isDirty){
+    if(!confirm('You have unsaved changes. Discard and start a new drawing?'))return;
+  }else{
+    if(!confirm('Start a new drawing?'))return;
+  }
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
@@ -2540,18 +2548,6 @@ function removePreset(i){
 }
 
 // ── Dirty tracking ───────────────────────────────────
-
-// ═══════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════
-setMode('draw');
-updateLenDisp();
-updateStats();
-updateUrBtns();
-updateFileUI();
-
-// ── localStorage helpers ─────────────────────────────
-function allFiles(){try{return JSON.parse(localStorage.getItem(LS_KEY)||'[]');}catch{return[];}}
 </script>
 </body>
 </html>
