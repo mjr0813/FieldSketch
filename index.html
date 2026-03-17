@@ -554,41 +554,12 @@ header{
               Rename
             </button>
           </div>
+          <div class="ip-lbl" id="selActionLbl" style="margin-top:6px"></div>
         </div>
       </div>
-      <!-- Bump/Move via numpad+compass — label changes by context -->
-      <div class="ip-sec" id="selActionPanel" style="display:none">
-        <div class="ip-lbl" id="selActionLbl">Bump Wall</div>
-        <div class="len-disp" id="selLenDisp">
-          <span class="ld-num" id="selLdNum"></span>
-          <span class="ld-cursor"></span>
-          <span class="ld-unit">ft</span>
-        </div>
-        <div class="numpad" style="margin-top:6px">
-          <div class="nk" onclick="selNk('7')">7</div>
-          <div class="nk" onclick="selNk('8')">8</div>
-          <div class="nk" onclick="selNk('9')">9</div>
-          <div class="nk" onclick="selNk('4')">4</div>
-          <div class="nk" onclick="selNk('5')">5</div>
-          <div class="nk" onclick="selNk('6')">6</div>
-          <div class="nk" onclick="selNk('1')">1</div>
-          <div class="nk" onclick="selNk('2')">2</div>
-          <div class="nk" onclick="selNk('3')">3</div>
-          <div class="nk" onclick="selNk('⌫')" style="font-size:15px">⌫</div>
-          <div class="nk" onclick="selNk('0')">0</div>
-          <div class="nk nk-dot" onclick="selNk('.')">·</div>
-        </div>
-        <div class="compass-grid" style="margin-top:6px">
-          <div class="ck" data-sd="NW" onclick="selCompass('NW')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 11L3 3M3 3h5M3 3v5"/></svg></div>
-          <div class="ck" data-sd="N"  onclick="selCompass('N')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 11V3M4 6l3-3 3 3"/></svg></div>
-          <div class="ck" data-sd="NE" onclick="selCompass('NE')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l8-8M11 3H6M11 3v5"/></svg></div>
-          <div class="ck" data-sd="W"  onclick="selCompass('W')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 7H3M6 4l-3 3 3 3"/></svg></div>
-          <div class="ck ck-ctr" style="font-size:9px;font-family:'Source Sans 3',sans-serif;font-weight:700;color:var(--muted)">dir</div>
-          <div class="ck" data-sd="E"  onclick="selCompass('E')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h8M8 4l3 3-3 3"/></svg></div>
-          <div class="ck" data-sd="SW" onclick="selCompass('SW')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3L3 11M3 11h5M3 11V6"/></svg></div>
-          <div class="ck" data-sd="S"  onclick="selCompass('S')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3v8M4 8l3 3 3-3"/></svg></div>
-          <div class="ck" data-sd="SE" onclick="selCompass('SE')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l8 8M11 11H6M11 11V6"/></svg></div>
-        </div>
+      <!-- Hidden elements still needed by updateSelPanel JS -->
+      <div id="selActionPanel" style="display:none">
+        <span id="selLdNum"></span>
       </div>
     </div>
 
@@ -1663,10 +1634,8 @@ function aidAtPoint(wx,wy){
 }
 
 function updateSelPanel(){
-  const panel=document.getElementById('selPanel');
   const hint=document.getElementById('selHint');
   const info=document.getElementById('selInfo');
-  const actionPanel=document.getElementById('selActionPanel');
   const nameDisp=document.getElementById('selNameDisp');
   const deleteBtn=document.getElementById('selDeleteBtn');
   const renameBtn=document.getElementById('selRenameBtn');
@@ -1677,20 +1646,17 @@ function updateSelPanel(){
     const a=verts.get(e.a),b=verts.get(e.b);
     const len=Math.hypot(b.x-a.x,b.y-a.y);
     hint.style.display='none';info.style.display='';
-    nameDisp.textContent=fmtDist(len)+' wall';
+    nameDisp.textContent=fmtDist(len)+' wall selected';
     deleteBtn.style.display='';renameBtn.style.display='none';
-    actionPanel.style.display='';actionLbl.textContent='Bump Wall';
-    document.getElementById('selLdNum').textContent=selBuf;
+    actionLbl.textContent='Enter distance + direction to bump';
   }else if(selAid!==null){
     hint.style.display='none';info.style.display='';
     const name=areaNames.has(selAid)?areaNames.get(selAid).name:'Unnamed';
-    nameDisp.textContent=name;
+    nameDisp.textContent=name+' selected';
     deleteBtn.style.display='none';renameBtn.style.display='';
-    actionPanel.style.display='';actionLbl.textContent='Move Shape';
-    document.getElementById('selLdNum').textContent=selBuf;
+    actionLbl.textContent='Enter distance + direction to move';
   }else{
     hint.style.display='';info.style.display='none';
-    actionPanel.style.display='none';
     document.getElementById('ldNum').textContent='';
   }
 }
@@ -1916,6 +1882,7 @@ function showAreaModal(sqft){
   document.getElementById('areaChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="chipSel(this,'${p}')">${p}</div>`).join('');
   // Pre-populate with existing name if this area already has one
   const existing=pendingAid!=null&&areaNames.has(pendingAid)?areaNames.get(pendingAid).name:'';
+  console.log('showAreaModal: pendingAid=',pendingAid,'existing=',existing,'areaNames=',new Map(areaNames));
   document.getElementById('areaNameInp').value=existing;
   // Highlight matching chip if name matches a preset
   if(existing){
