@@ -1505,9 +1505,12 @@ function onTM(e){
     if(Math.hypot(dx,dy)>6){
       touchMoved=true;
       if(mode==='select'&&selAid!==null){
-        // Drag selected shape
-        const wDelta=dx/vpS;const hDelta=-dy/vpS;
-        if(!selDragActive){selDragActive=true;selDragLast={x:pos.x,y:pos.y};}
+        // Drag selected shape — snapshot once at drag start
+        if(!selDragActive){
+          pushUndo();
+          selDragActive=true;
+          selDragLast={x:pos.x,y:pos.y};
+        }
         const ddx=(pos.x-selDragLast.x)/vpS;
         const ddy=-(pos.y-selDragLast.y)/vpS;
         translateAid(selAid,ddx,ddy);
@@ -1542,10 +1545,9 @@ function onTE(e){
       if(mode==='cursor')handleCursorTap(pos);
       else if(mode==='select')handleSelectTap(pos);
     }
-    // Select mode drag end
+    // Select mode drag end — just reset flag
     if(mode==='select'&&selDragActive){
       selDragActive=false;
-      if(selAid!==null)pushUndo();
     }
     panStart=null;
   }
@@ -1668,19 +1670,20 @@ function selNk(key){
 function selCompass(dir){
   const len=parseFloat(selBuf)||0;
   if(!len)return;
-  const{dx,dy}=dirVec(len,dir);
+  // Use cardinal direction directly — ignore customDeg in select mode
+  const deg=DIR_DEG[dir];
+  const r=deg*Math.PI/180;
+  const dx=Math.cos(r)*len, dy=Math.sin(r)*len;
 
   // Flash button
   const btn=document.querySelector(`.ck[data-sd="${dir}"]`);
   if(btn){btn.classList.add('active');setTimeout(()=>btn.classList.remove('active'),200);}
 
   if(selWallEid!==null){
-    // Bump wall: translate both endpoint vertices
     pushUndo();
     const e=edges.get(selWallEid);
     bumpVert(e.a,dx,dy);bumpVert(e.b,dx,dy);
   }else if(selAid!==null){
-    // Move shape: translate all vertices
     pushUndo();
     translateAid(selAid,dx,dy);
   }
@@ -1694,10 +1697,19 @@ function bumpVert(vid,dx,dy){
 }
 
 function translateAid(aid,dx,dy){
-  // Collect all vertex ids belonging to this areaId
+  // Collect vertices used by this areaId
   const aidVerts=new Set();
   for(const e of edges.values())if(e.areaId===aid){aidVerts.add(e.a);aidVerts.add(e.b);}
-  for(const vid of aidVerts)bumpVert(vid,dx,dy);
+  // Only move vertices NOT shared with another areaId
+  const sharedVerts=new Set();
+  for(const e of edges.values()){
+    if(e.areaId===aid)continue;
+    if(aidVerts.has(e.a))sharedVerts.add(e.a);
+    if(aidVerts.has(e.b))sharedVerts.add(e.b);
+  }
+  for(const vid of aidVerts){
+    if(!sharedVerts.has(vid))bumpVert(vid,dx,dy);
+  }
 }
 
 function selDelete(){
@@ -1863,7 +1875,13 @@ let pendingAid=null;
 function showAreaModal(sqft){
   document.getElementById('areaModalSub').textContent=`Area: ${sqft.toLocaleString('en-US',{maximumFractionDigits:0})} ft²`;
   document.getElementById('areaChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="chipSel(this,'${p}')">${p}</div>`).join('');
-  document.getElementById('areaNameInp').value='';
+  // Pre-populate with existing name if this area already has one
+  const existing=pendingAid!=null&&areaNames.has(pendingAid)?areaNames.get(pendingAid).name:'';
+  document.getElementById('areaNameInp').value=existing;
+  // Highlight matching chip if name matches a preset
+  if(existing){
+    document.querySelectorAll('.mchip').forEach(c=>{if(c.textContent===existing)c.classList.add('sel');});
+  }
   document.getElementById('areaModal').classList.add('show');
   setTimeout(()=>document.getElementById('areaNameInp').focus(),300);
 }
@@ -1874,7 +1892,11 @@ function chipSel(el,name){
 function cancelAreaModal(){document.getElementById('areaModal').classList.remove('show');pendingAid=null;}
 function confirmAreaModal(){
   const name=document.getElementById('areaNameInp').value.trim()||'Area';
-  if(pendingAid!=null){areaNames.set(pendingAid,{name,color:COLORS[areaNames.size%COLORS.length]});}
+  if(pendingAid!=null){
+    // Preserve existing color if already named, otherwise assign new color
+    const existingColor=areaNames.has(pendingAid)?areaNames.get(pendingAid).color:COLORS[areaNames.size%COLORS.length];
+    areaNames.set(pendingAid,{name,color:existingColor});
+  }
   document.getElementById('areaModal').classList.remove('show');pendingAid=null;
   redraw();updateStats();
 }
