@@ -1695,11 +1695,13 @@ function selNk(key){
   else if(key==='.')  {if(!selBuf.includes('.'))selBuf+=key;}
   else{if(selBuf.length<8)selBuf+=key;}
   document.getElementById('selLdNum').textContent=selBuf;
+  console.log('selNk:',key,'buf:',selBuf,'selWallEid:',selWallEid,'selAid:',selAid);
 }
 
 function selCompass(dir){
+  console.log('selCompass:',dir,'buf:',selBuf,'selWallEid:',selWallEid,'selAid:',selAid);
   const len=parseFloat(selBuf)||0;
-  if(!len)return;
+  if(!len){console.log('selCompass: no length, returning');return;}
   // Use cardinal direction directly — ignore customDeg in select mode
   const deg=DIR_DEG[dir];
   const r=deg*Math.PI/180;
