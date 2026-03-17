@@ -2095,6 +2095,7 @@ function clearAll(){
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
   clearProv();numBuf='';updateLenDisp();redraw();updateStats();updateCloseBtn();
+  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
 }
 
 // ═══════════════════════════════════════════════════════
