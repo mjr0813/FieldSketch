@@ -944,6 +944,9 @@ function dedup(arr){
 // COMPASS TAP
 // ═══════════════════════════════════════════════════════
 function compassTap(dir){
+  // In select mode, delegate to selCompass
+  if(mode==='select'){selCompass(dir);return;}
+
   activeDir=dir;customDeg=null;
   // Flash the button briefly then clear
   const tapped=document.querySelector(`.ck[data-d="${dir}"]`);
@@ -1419,6 +1422,7 @@ function drawCursorMark(){
 // NUMPAD
 // ═══════════════════════════════════════════════════════
 function nk(key){
+  if(mode==='select'){selNk(key);return;}
   if(key==='⌫'){numBuf=numBuf.slice(0,-1);}
   else if(key==='.'){if(!numBuf.includes('.'))numBuf+=key;}
   else{if(numBuf.length<8)numBuf+=key;}
@@ -1687,6 +1691,7 @@ function updateSelPanel(){
   }else{
     hint.style.display='';info.style.display='none';
     actionPanel.style.display='none';
+    document.getElementById('ldNum').textContent='';
   }
 }
 
@@ -1694,14 +1699,14 @@ function selNk(key){
   if(key==='⌫')selBuf=selBuf.slice(0,-1);
   else if(key==='.')  {if(!selBuf.includes('.'))selBuf+=key;}
   else{if(selBuf.length<8)selBuf+=key;}
+  // Update both the main length display and the select panel display
+  document.getElementById('ldNum').textContent=selBuf;
   document.getElementById('selLdNum').textContent=selBuf;
-  console.log('selNk:',key,'buf:',selBuf,'selWallEid:',selWallEid,'selAid:',selAid);
 }
 
 function selCompass(dir){
-  console.log('selCompass:',dir,'buf:',selBuf,'selWallEid:',selWallEid,'selAid:',selAid);
   const len=parseFloat(selBuf)||0;
-  if(!len){console.log('selCompass: no length, returning');return;}
+  if(!len)return;
   // Use cardinal direction directly — ignore customDeg in select mode
   const deg=DIR_DEG[dir];
   const r=deg*Math.PI/180;
@@ -1719,7 +1724,9 @@ function selCompass(dir){
     pushUndo();
     translateAid(selAid,dx,dy);
   }
-  selBuf='';document.getElementById('selLdNum').textContent='';
+  selBuf='';
+  document.getElementById('ldNum').textContent='';
+  document.getElementById('selLdNum').textContent='';
   redraw();updateStats();
 }
 
