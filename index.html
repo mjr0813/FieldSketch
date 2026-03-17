@@ -2330,6 +2330,7 @@ function autoSave(){
   try{
     const data={
       currentFileId,
+      isDirty,
       ...drawingSnapshot()
     };
     localStorage.setItem(LS_AUTOSAVE,JSON.stringify(data));
@@ -2344,7 +2345,8 @@ function restoreAutosave(){
     if(!data.verts||!data.edges)return false;
     restoreDrawingData(data);
     if(data.currentFileId)currentFileId=data.currentFileId;
-    // Don't markClean — there may still be unsaved changes
+    // Restore dirty state — unsaved changes before refresh should still show as unsaved
+    isDirty=data.isDirty===true;
     return true;
   }catch{return false;}
 }
