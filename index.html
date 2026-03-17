@@ -125,6 +125,9 @@ header{
 #canvas{position:absolute;top:0;left:0;cursor:crosshair;}
 #canvas.mode-cursor{cursor:cell;}
 #canvas.mode-select{cursor:default;}
+.sel-hint{font-size:10px;color:var(--muted);text-align:center;padding:6px 4px;font-style:italic;line-height:1.4;}
+.sel-label{font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
+.sel-name-disp{font-size:13px;font-weight:600;color:var(--text);text-align:center;margin-bottom:5px;}
 
 .snap-badge{
   position:absolute;top:8px;left:50%;transform:translateX(-50%);
@@ -530,6 +533,60 @@ header{
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 7h11M9 4l3 3-3 3M5 4L2 7l3 3"/></svg>
         Flip Dims
       </button>
+    </div>
+
+    <!-- 5. Select mode panel (shown only in select mode) -->
+    <div id="selPanel" style="display:none">
+      <div class="ip-sec">
+        <div id="selHint" class="sel-hint">Tap a wall or shape</div>
+        <div id="selInfo" style="display:none">
+          <div class="sel-name-disp" id="selNameDisp"></div>
+          <div class="pa-row">
+            <button class="pa-btn" id="selDeleteBtn" onclick="selDelete()" style="display:none">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+              Delete Wall
+            </button>
+            <button class="pa-btn" id="selRenameBtn" onclick="selRename()" style="display:none">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
+              Rename
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Bump/Move via numpad+compass — label changes by context -->
+      <div class="ip-sec" id="selActionPanel" style="display:none">
+        <div class="ip-lbl" id="selActionLbl">Bump Wall</div>
+        <div class="len-disp" id="selLenDisp">
+          <span class="ld-num" id="selLdNum"></span>
+          <span class="ld-cursor"></span>
+          <span class="ld-unit">ft</span>
+        </div>
+        <div class="numpad" style="margin-top:6px">
+          <div class="nk" onclick="selNk('7')">7</div>
+          <div class="nk" onclick="selNk('8')">8</div>
+          <div class="nk" onclick="selNk('9')">9</div>
+          <div class="nk" onclick="selNk('4')">4</div>
+          <div class="nk" onclick="selNk('5')">5</div>
+          <div class="nk" onclick="selNk('6')">6</div>
+          <div class="nk" onclick="selNk('1')">1</div>
+          <div class="nk" onclick="selNk('2')">2</div>
+          <div class="nk" onclick="selNk('3')">3</div>
+          <div class="nk" onclick="selNk('⌫')" style="font-size:15px">⌫</div>
+          <div class="nk" onclick="selNk('0')">0</div>
+          <div class="nk nk-dot" onclick="selNk('.')">·</div>
+        </div>
+        <div class="compass-grid" style="margin-top:6px">
+          <div class="ck" data-sd="NW" onclick="selCompass('NW')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 11L3 3M3 3h5M3 3v5"/></svg></div>
+          <div class="ck" data-sd="N"  onclick="selCompass('N')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 11V3M4 6l3-3 3 3"/></svg></div>
+          <div class="ck" data-sd="NE" onclick="selCompass('NE')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l8-8M11 3H6M11 3v5"/></svg></div>
+          <div class="ck" data-sd="W"  onclick="selCompass('W')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 7H3M6 4l-3 3 3 3"/></svg></div>
+          <div class="ck ck-ctr" style="font-size:9px;font-family:'Source Sans 3',sans-serif;font-weight:700;color:var(--muted)">dir</div>
+          <div class="ck" data-sd="E"  onclick="selCompass('E')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h8M8 4l3 3-3 3"/></svg></div>
+          <div class="ck" data-sd="SW" onclick="selCompass('SW')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3L3 11M3 11h5M3 11V6"/></svg></div>
+          <div class="ck" data-sd="S"  onclick="selCompass('S')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3v8M4 8l3 3 3-3"/></svg></div>
+          <div class="ck" data-sd="SE" onclick="selCompass('SE')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3l8 8M11 11H6M11 11V6"/></svg></div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -987,6 +1044,17 @@ function splitSharedEdges(newAid){
 
 // Returns true if point (px,py) lies on segment (ax,ay)-(bx,by)
 // within a small epsilon
+// Point-in-polygon ray casting
+function pointInPoly(px,py,pts){
+  let inside=false;
+  const n=pts.length;
+  for(let i=0,j=n-1;i<n;j=i++){
+    const xi=pts[i].x,yi=pts[i].y,xj=pts[j].x,yj=pts[j].y;
+    if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+
 function pointOnSegment(px,py,ax,ay,bx,by){
   const EPS=0.01;
   const dx=bx-ax,dy=by-ay,len2=dx*dx+dy*dy;
@@ -1108,7 +1176,9 @@ function updateStats(){
 function redraw(){
   const W=canvas.clientWidth,H=canvas.clientHeight;
   ctx.clearRect(0,0,W,H);
-  drawGrid(W,H);drawOriginMark();drawComponents();drawProvisional();drawCursorMark();
+  drawGrid(W,H);drawOriginMark();drawComponents();
+  if(mode==='select')drawSelectionHighlight();
+  drawProvisional();drawCursorMark();
 }
 
 function drawGrid(W,H){
@@ -1350,12 +1420,17 @@ function setMode(m){
     document.getElementById('btn'+id.charAt(0).toUpperCase()+id.slice(1))?.classList.toggle('active',id===m);
   });
   canvas.className='mode-'+m;
+  // Show/hide select panel
+  document.getElementById('selPanel').style.display=(m==='select')?'':'none';
+  // Clear selection when leaving select mode
+  if(m!=='select'){selWallEid=null;selAid=null;selBuf='';}
   if(m==='draw'&&!curPlaced){
     const w=document.getElementById('canvasWrap').clientWidth;
     const h=document.getElementById('canvasWrap').clientHeight;
     const wc=s2w(w/2,h/2);curX=wc.x;curY=wc.y;curPlaced=true;redraw();
   }
   updateCloseBtn();
+  if(m==='select')updateSelPanel();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1429,9 +1504,20 @@ function onTM(e){
     const dx=pos.x-panStart.x,dy=pos.y-panStart.y;
     if(Math.hypot(dx,dy)>6){
       touchMoved=true;
-      // Always pan on single finger move, regardless of mode
-      vpX=panStart.vpX+dx;vpY=panStart.vpY+dy;
-      redraw();
+      if(mode==='select'&&selAid!==null){
+        // Drag selected shape
+        const wDelta=dx/vpS;const hDelta=-dy/vpS;
+        if(!selDragActive){selDragActive=true;selDragLast={x:pos.x,y:pos.y};}
+        const ddx=(pos.x-selDragLast.x)/vpS;
+        const ddy=-(pos.y-selDragLast.y)/vpS;
+        translateAid(selAid,ddx,ddy);
+        selDragLast={x:pos.x,y:pos.y};
+        redraw();updateStats();
+      }else{
+        // Pan
+        vpX=panStart.vpX+dx;vpY=panStart.vpY+dy;
+        redraw();
+      }
     }
   }
 
@@ -1449,23 +1535,25 @@ function onTE(e){
   if(e.touches.length<2){pinchD=null;pinchMidClient=null;}
   if(e.touches.length===0){
     document.getElementById('snapBadge').classList.remove('show');
-    // Only handle tap (not pan release) and only in cursor mode
-    if(!touchMoved&&mode==='cursor'&&panStart){
-      const r=canvas.getBoundingClientRect();
-      // Use changedTouches for the lift position
-      if(e.changedTouches.length){
-        const t=e.changedTouches[0];
-        const pos={x:t.clientX-r.left,y:t.clientY-r.top};
-        handleCursorTap(pos);
-      }
+    const r=canvas.getBoundingClientRect();
+    if(!touchMoved&&panStart&&e.changedTouches.length){
+      const t=e.changedTouches[0];
+      const pos={x:t.clientX-r.left,y:t.clientY-r.top};
+      if(mode==='cursor')handleCursorTap(pos);
+      else if(mode==='select')handleSelectTap(pos);
+    }
+    // Select mode drag end
+    if(mode==='select'&&selDragActive){
+      selDragActive=false;
+      if(selAid!==null)pushUndo();
     }
     panStart=null;
   }
 }
 
 function onCL(e){
-  // Mouse fallback — only move cursor in cursor mode
   if(mode==='cursor')handleCursorTap(evtPos(e));
+  else if(mode==='select')handleSelectTap(evtPos(e));
 }
 
 // Cursor tap: only in cursor mode
@@ -1482,8 +1570,182 @@ function handleCursorTap(pos){
 }
 
 // ═══════════════════════════════════════════════════════
-// FIT SCREEN
+// SELECT MODE
 // ═══════════════════════════════════════════════════════
+let selWallEid=null; // selected edge id
+let selAid=null;     // selected area id (whole shape)
+let selBuf='';       // numpad buffer for bump/move
+let selDragActive=false;
+let selDragLast=null;
+
+function clearSelection(){
+  selWallEid=null;selAid=null;selBuf='';
+  updateSelPanel();redraw();
+}
+
+function handleSelectTap(pos){
+  // 1. Try to hit an edge (wall)
+  const hitEdge=findEdgeNearScreen(pos.x,pos.y,16);
+  if(hitEdge!==null){
+    selWallEid=hitEdge;selAid=null;
+    updateSelPanel();redraw();return;
+  }
+  // 2. Try to hit inside a closed shape
+  const w=s2w(pos.x,pos.y);
+  const hitAid=aidAtPoint(w.x,w.y);
+  if(hitAid!==null){
+    selAid=hitAid;selWallEid=null;
+    updateSelPanel();redraw();return;
+  }
+  // 3. Nothing hit — deselect
+  clearSelection();
+}
+
+// Find edge whose screen midpoint or segment is within threshold pixels
+function findEdgeNearScreen(sx,sy,thresh){
+  let bestEid=null,bestDist=Infinity;
+  for(const[eid,e]of edges){
+    const a=verts.get(e.a),b=verts.get(e.b);
+    const sa=w2s(a.x,a.y),sb=w2s(b.x,b.y);
+    const dx=sb.x-sa.x,dy=sb.y-sa.y,len2=dx*dx+dy*dy;
+    if(len2<1)continue;
+    const t=Math.max(0,Math.min(1,((sx-sa.x)*dx+(sy-sa.y)*dy)/len2));
+    const dist=Math.hypot(sx-(sa.x+t*dx),sy-(sa.y+t*dy));
+    if(dist<thresh&&dist<bestDist){bestDist=dist;bestEid=eid;}
+  }
+  return bestEid;
+}
+
+// Find closed areaId whose polygon contains world point
+function aidAtPoint(wx,wy){
+  const closed=closedAids();
+  for(const aid of closed){
+    const g=aidGeom(aid);
+    if(pointInPoly(wx,wy,g.pts))return aid;
+  }
+  return null;
+}
+
+function updateSelPanel(){
+  const panel=document.getElementById('selPanel');
+  const hint=document.getElementById('selHint');
+  const info=document.getElementById('selInfo');
+  const actionPanel=document.getElementById('selActionPanel');
+  const nameDisp=document.getElementById('selNameDisp');
+  const deleteBtn=document.getElementById('selDeleteBtn');
+  const renameBtn=document.getElementById('selRenameBtn');
+  const actionLbl=document.getElementById('selActionLbl');
+
+  if(selWallEid!==null){
+    const e=edges.get(selWallEid);
+    const a=verts.get(e.a),b=verts.get(e.b);
+    const len=Math.hypot(b.x-a.x,b.y-a.y);
+    hint.style.display='none';info.style.display='';
+    nameDisp.textContent=fmtDist(len)+' wall';
+    deleteBtn.style.display='';renameBtn.style.display='none';
+    actionPanel.style.display='';actionLbl.textContent='Bump Wall';
+    document.getElementById('selLdNum').textContent=selBuf;
+  }else if(selAid!==null){
+    hint.style.display='none';info.style.display='';
+    const name=areaNames.has(selAid)?areaNames.get(selAid).name:'Unnamed';
+    nameDisp.textContent=name;
+    deleteBtn.style.display='none';renameBtn.style.display='';
+    actionPanel.style.display='';actionLbl.textContent='Move Shape';
+    document.getElementById('selLdNum').textContent=selBuf;
+  }else{
+    hint.style.display='';info.style.display='none';
+    actionPanel.style.display='none';
+  }
+}
+
+function selNk(key){
+  if(key==='⌫')selBuf=selBuf.slice(0,-1);
+  else if(key==='.')  {if(!selBuf.includes('.'))selBuf+=key;}
+  else{if(selBuf.length<8)selBuf+=key;}
+  document.getElementById('selLdNum').textContent=selBuf;
+}
+
+function selCompass(dir){
+  const len=parseFloat(selBuf)||0;
+  if(!len)return;
+  const{dx,dy}=dirVec(len,dir);
+
+  // Flash button
+  const btn=document.querySelector(`.ck[data-sd="${dir}"]`);
+  if(btn){btn.classList.add('active');setTimeout(()=>btn.classList.remove('active'),200);}
+
+  if(selWallEid!==null){
+    // Bump wall: translate both endpoint vertices
+    pushUndo();
+    const e=edges.get(selWallEid);
+    bumpVert(e.a,dx,dy);bumpVert(e.b,dx,dy);
+  }else if(selAid!==null){
+    // Move shape: translate all vertices
+    pushUndo();
+    translateAid(selAid,dx,dy);
+  }
+  selBuf='';document.getElementById('selLdNum').textContent='';
+  redraw();updateStats();
+}
+
+function bumpVert(vid,dx,dy){
+  const v=verts.get(vid);
+  verts.set(vid,{x:Math.round((v.x+dx)*1000)/1000,y:Math.round((v.y+dy)*1000)/1000});
+}
+
+function translateAid(aid,dx,dy){
+  // Collect all vertex ids belonging to this areaId
+  const aidVerts=new Set();
+  for(const e of edges.values())if(e.areaId===aid){aidVerts.add(e.a);aidVerts.add(e.b);}
+  for(const vid of aidVerts)bumpVert(vid,dx,dy);
+}
+
+function selDelete(){
+  if(selWallEid===null)return;
+  pushUndo();
+  edges.delete(selWallEid);
+  pruneVerts();
+  selWallEid=null;
+  updateSelPanel();redraw();updateStats();updateCloseBtn();
+}
+
+function selRename(){
+  if(selAid===null)return;
+  const g=aidGeom(selAid);
+  const sqft=shoelace(g.pts);
+  pendingAid=selAid;
+  showAreaModal(sqft);
+}
+
+// Draw selection highlights
+function drawSelectionHighlight(){
+  if(selWallEid!==null&&edges.has(selWallEid)){
+    const e=edges.get(selWallEid);
+    const sa=w2s(verts.get(e.a).x,verts.get(e.a).y);
+    const sb=w2s(verts.get(e.b).x,verts.get(e.b).y);
+    ctx.save();
+    ctx.strokeStyle='rgba(42,92,132,0.9)';ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(sa.x,sa.y);ctx.lineTo(sb.x,sb.y);ctx.stroke();
+    ctx.strokeStyle='white';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(sa.x,sa.y);ctx.lineTo(sb.x,sb.y);ctx.stroke();
+    ctx.restore();
+  }
+  if(selAid!==null){
+    const g=aidGeom(selAid);
+    if(g.pts.length>=3){
+      ctx.save();
+      ctx.beginPath();
+      const s0=w2s(g.pts[0].x,g.pts[0].y);ctx.moveTo(s0.x,s0.y);
+      for(let i=1;i<g.pts.length;i++){const s=w2s(g.pts[i].x,g.pts[i].y);ctx.lineTo(s.x,s.y);}
+      ctx.closePath();
+      ctx.strokeStyle='rgba(42,92,132,0.9)';ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle='rgba(42,92,132,0.08)';ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// Point-in-polygon for select hit-testing (already defined as pointInPoly)
 function fitScreen(){
   const w=document.getElementById('canvasWrap').clientWidth;
   const h=document.getElementById('canvasWrap').clientHeight;
