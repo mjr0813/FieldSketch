@@ -440,7 +440,7 @@ header{
 
     <!-- 1. Length display -->
     <div class="ip-sec">
-      <div class="ip-lbl">Wall Length</div>
+      <div class="ip-lbl" style="display:none">Wall Length</div>
       <div class="len-disp" id="lenDisp">
         <span class="ld-num" id="ldNum"></span>
         <span class="ld-cursor"></span>
@@ -957,7 +957,9 @@ function doConfirm(){
   pushUndo();
   const v1=addVert(curX,curY);
   const v2=addVert(ep.x,ep.y);
-  let aid=findAidOpen(v1);if(aid===null)aid=nAid++;
+  let aid=findAidOpen(v1);
+  if(aid===null)aid=findAidOpen(v2);
+  if(aid===null)aid=nAid++;
   addEdge(v1,v2,aid);
   mergeAreaIds();
   curX=ep.x;curY=ep.y;curPlaced=true;
@@ -1646,13 +1648,13 @@ function updateSelPanel(){
     const a=verts.get(e.a),b=verts.get(e.b);
     const len=Math.hypot(b.x-a.x,b.y-a.y);
     hint.style.display='none';info.style.display='';
-    nameDisp.textContent=fmtDist(len)+' wall selected';
+    nameDisp.textContent='';
     deleteBtn.style.display='';renameBtn.style.display='none';
     actionLbl.textContent='Enter distance + direction to bump';
   }else if(selAid!==null){
     hint.style.display='none';info.style.display='';
     const name=areaNames.has(selAid)?areaNames.get(selAid).name:'Unnamed';
-    nameDisp.textContent=name+' selected';
+    nameDisp.textContent=name;
     deleteBtn.style.display='none';renameBtn.style.display='';
     actionLbl.textContent='Enter distance + direction to move';
   }else{
@@ -1723,7 +1725,24 @@ function selDelete(){
   edges.delete(selWallEid);
   pruneVerts();
   selWallEid=null;
+  // Place cursor on an open end of the now-open chain so
+  // the user can immediately redraw the missing wall
+  const openAid=findAnyOpenAid();
+  if(openAid!==null){
+    const g=aidGeom(openAid);
+    if(g.ends.length>=1){
+      const v=verts.get(g.ends[0]);
+      curX=v.x;curY=v.y;curPlaced=true;
+    }
+  }
   updateSelPanel();redraw();updateStats();updateCloseBtn();
+}
+
+function findAnyOpenAid(){
+  const closed=closedAids();
+  const aids=new Set([...edges.values()].map(e=>e.areaId));
+  for(const aid of aids)if(!closed.has(aid))return aid;
+  return null;
 }
 
 function selRename(){
