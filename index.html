@@ -1555,6 +1555,8 @@ function onTE(e){
     // Select mode drag end — just reset flag
     if(mode==='select'&&selDragActive){
       selDragActive=false;
+      // Snap on lift if a shape was being dragged
+      if(selAid!==null){snapAidToVerts(selAid);redraw();updateStats();}
     }
     panStart=null;
   }
@@ -1691,6 +1693,7 @@ function selCompass(dir){
   }else if(selAid!==null){
     pushUndo();
     translateAid(selAid,dx,dy);
+    snapAidToVerts(selAid);
   }
   selBuf='';
   document.getElementById('ldNum').textContent='';
@@ -1716,6 +1719,48 @@ function translateAid(aid,dx,dy){
   }
   for(const vid of aidVerts){
     if(!sharedVerts.has(vid))bumpVert(vid,dx,dy);
+  }
+}
+
+// Snap a moved shape's vertices to nearby vertices of other shapes.
+// Finds the single closest pair and applies that offset to the whole shape.
+const SNAP_WORLD=0.05; // ft — half the minimum measurement unit
+
+function snapAidToVerts(aid){
+  const aidVerts=new Set();
+  for(const e of edges.values())if(e.areaId===aid){aidVerts.add(e.a);aidVerts.add(e.b);}
+  // Exclusive verts only (not shared with other aids)
+  const sharedVerts=new Set();
+  for(const e of edges.values()){
+    if(e.areaId===aid)continue;
+    if(aidVerts.has(e.a))sharedVerts.add(e.a);
+    if(aidVerts.has(e.b))sharedVerts.add(e.b);
+  }
+  // Targets: all verts NOT belonging to this shape
+  const targets=[];
+  for(const[id,v]of verts){
+    if(!aidVerts.has(id))targets.push(v);
+  }
+  if(!targets.length)return;
+
+  // Threshold: max of SNAP_WORLD and 8px converted to world coords
+  const thresh=Math.max(SNAP_WORLD,8/vpS);
+
+  let bestDist=Infinity,bestDx=0,bestDy=0,found=false;
+  for(const vid of aidVerts){
+    if(sharedVerts.has(vid))continue;
+    const mv=verts.get(vid);
+    for(const tv of targets){
+      const d=Math.hypot(mv.x-tv.x,mv.y-tv.y);
+      if(d<thresh&&d<bestDist){
+        bestDist=d;bestDx=tv.x-mv.x;bestDy=tv.y-mv.y;found=true;
+      }
+    }
+  }
+  if(!found)return;
+  // Apply snap offset to all exclusive verts
+  for(const vid of aidVerts){
+    if(!sharedVerts.has(vid))bumpVert(vid,bestDx,bestDy);
   }
 }
 
