@@ -287,30 +287,54 @@ header{
 
 /* Deg popup */
 .deg-popup{
-  position:fixed;right:calc(var(--panel-w) + 10px);bottom:60px;
+  position:fixed;right:calc(var(--panel-w) + 10px);bottom:10px;
   background:var(--surface);border:1px solid var(--border);border-radius:13px;
-  padding:13px 14px;width:190px;box-shadow:var(--shadow-lg);
+  padding:12px 12px 14px;width:220px;box-shadow:var(--shadow-lg);
   opacity:0;pointer-events:none;transition:opacity .15s;z-index:200;
 }
 .deg-popup.show{opacity:1;pointer-events:all;}
-.deg-prev-wrap{width:80px;height:80px;margin:6px auto;border-radius:50%;border:1px solid var(--border);background:var(--surface2);overflow:hidden;}
+.deg-prev-wrap{width:160px;height:160px;margin:8px auto;border-radius:50%;border:1px solid var(--border);background:var(--surface2);overflow:hidden;}
 #degCanvas{width:100%;height:100%;}
-.deg-inp{
-  font-family:'DM Mono',monospace;font-size:18px;
-  width:100%;padding:7px 10px;border:1.5px solid var(--border);
-  border-radius:7px;background:var(--surface2);color:var(--text);
-  outline:none;margin-top:8px;
-  touch-action:auto;user-select:text;-webkit-user-select:text;
+
+/* Degree display — mirrors len-disp */
+.deg-disp{
+  font-family:'DM Mono',monospace;font-size:26px;font-weight:300;
+  color:var(--text);background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:8px;padding:7px 10px;
+  display:flex;align-items:center;justify-content:flex-end;
+  gap:0;line-height:1;min-height:48px;transition:border-color .15s;
+  margin-top:8px;
 }
-.deg-inp:focus{border-color:var(--accent);}
-.deg-btns{display:flex;gap:5px;margin-top:7px;}
-.dbtn{
-  flex:1;height:32px;border-radius:6px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text2);
-  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:all .12s;
+.deg-num{color:var(--text);text-align:right;}
+.deg-cursor{width:2px;height:22px;background:var(--accent);border-radius:1px;animation:blink 1s step-end infinite;flex-shrink:0;margin:0 3px;}
+.deg-unit{font-size:12px;color:var(--muted);font-weight:400;align-self:flex-end;padding-bottom:2px;flex-shrink:0;}
+
+/* Deg numpad — same style as main numpad */
+.deg-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px;}
+.dnk{
+  font-family:'DM Mono',monospace;font-size:17px;font-weight:400;
+  height:40px;border-radius:7px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .1s;
 }
-.dbtn.acc{background:var(--accent);color:white;border-color:var(--accent);}
-.dbtn:active{transform:scale(.95);}
+.dnk:active{background:var(--accent-light);border-color:var(--accent);transform:scale(.93);}
+.dnk-bs{font-size:15px;}
+.dnk-draw{
+  grid-column:1/-1;height:40px;border-radius:8px;border:none;
+  background:var(--accent);color:white;
+  font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:1px;text-transform:uppercase;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .13s;box-shadow:0 2px 8px rgba(42,92,132,.25);margin-top:2px;
+}
+.dnk-draw:active{opacity:.85;transform:scale(.98);}
+.deg-cancel{
+  width:100%;height:32px;border-radius:7px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);
+  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:600;
+  cursor:pointer;margin-top:5px;transition:all .12s;
+}
+.deg-cancel:active{transform:scale(.96);}
 </style>
 </head>
 <body>
@@ -514,12 +538,28 @@ header{
 <!-- Deg popup -->
 <div class="deg-popup" id="degPopup">
   <div class="ip-lbl">Custom Angle (0° = East, CCW+)</div>
-  <div class="deg-prev-wrap"><canvas id="degCanvas" width="80" height="80"></canvas></div>
-  <input type="number" class="deg-inp" id="degInp" placeholder="90" inputmode="decimal" step="1" oninput="updateDegPreview()">
-  <div class="deg-btns">
-    <button class="dbtn" onclick="hideDegPopup()">Cancel</button>
-    <button class="dbtn acc" onclick="confirmDeg()">Use Angle</button>
+  <div class="deg-prev-wrap"><canvas id="degCanvas" width="160" height="160"></canvas></div>
+  <div class="deg-disp">
+    <span class="deg-num" id="degNum"></span>
+    <span class="deg-cursor"></span>
+    <span class="deg-unit">deg</span>
   </div>
+  <div class="deg-numpad">
+    <div class="dnk" onclick="dnk('7')">7</div>
+    <div class="dnk" onclick="dnk('8')">8</div>
+    <div class="dnk" onclick="dnk('9')">9</div>
+    <div class="dnk" onclick="dnk('4')">4</div>
+    <div class="dnk" onclick="dnk('5')">5</div>
+    <div class="dnk" onclick="dnk('6')">6</div>
+    <div class="dnk" onclick="dnk('1')">1</div>
+    <div class="dnk" onclick="dnk('2')">2</div>
+    <div class="dnk" onclick="dnk('3')">3</div>
+    <div class="dnk dnk-bs" onclick="dnk('⌫')">⌫</div>
+    <div class="dnk" onclick="dnk('0')">0</div>
+    <div class="dnk" onclick="dnk('.')">·</div>
+    <button class="dnk-draw" onclick="drawAngle()">DRAW ANGLE</button>
+  </div>
+  <button class="deg-cancel" onclick="hideDegPopup()">Cancel</button>
 </div>
 
 <!-- Area name modal -->
@@ -748,8 +788,8 @@ function nearVert(sx,sy,thr=28){
 // ═══════════════════════════════════════════════════════
 // DIRECTION
 // ═══════════════════════════════════════════════════════
-function dirVec(len,dir){
-  const deg=customDeg!=null?customDeg:DIR_DEG[dir||activeDir];
+function dirVec(len,dir,degOverride){
+  const deg=degOverride!=null?degOverride:(customDeg!=null?customDeg:DIR_DEG[dir||activeDir]);
   const r=deg*Math.PI/180;
   return{dx:Math.cos(r)*len,dy:Math.sin(r)*len};
 }
@@ -1127,13 +1167,15 @@ function drawComponents(){
       const{cx,cy}=polyCentroid(pts);
       const sc=w2s(cx,cy);
       const sqft=shoelace(pts);
+      let perim=0;for(const e of edges.values())if(e.areaId===aid){const a=verts.get(e.a),b=verts.get(e.b);perim+=Math.hypot(b.x-a.x,b.y-a.y);}
       ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.font=`600 11px 'Source Sans 3',sans-serif`;
       ctx.fillStyle=h2r(color,0.6);
-      ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y-8);
+      ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y-12);
       ctx.font=`400 10px 'DM Mono',monospace`;
       ctx.fillStyle=h2r(color,0.45);
-      ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²',sc.x,sc.y+7);
+      ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²',sc.x,sc.y+2);
+      ctx.fillText(perim.toFixed(1)+' ft perim',sc.x,sc.y+15);
       ctx.restore();
     }
 
@@ -1470,35 +1512,86 @@ function clearAll(){
 // ═══════════════════════════════════════════════════════
 // DEG POPUP
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// DEG POPUP
+// ═══════════════════════════════════════════════════════
+let degBuf='';
+
 function showDegPopup(){
-  document.getElementById('degPopup').classList.add('show');
-  document.getElementById('degInp').value=customDeg!=null?customDeg:'90';
+  degBuf=customDeg!=null?String(customDeg):'';
+  updateDegDisp();
   updateDegPreview();
-  setTimeout(()=>document.getElementById('degInp').focus(),100);
+  document.getElementById('degPopup').classList.add('show');
 }
-function hideDegPopup(){document.getElementById('degPopup').classList.remove('show');}
+function hideDegPopup(){
+  document.getElementById('degPopup').classList.remove('show');
+}
+
+function dnk(key){
+  if(key==='⌫'){degBuf=degBuf.slice(0,-1);}
+  else if(key==='.'){if(!degBuf.includes('.'))degBuf+=key;}
+  else{if(degBuf.length<6)degBuf+=key;}
+  updateDegDisp();
+  updateDegPreview();
+}
+
+function updateDegDisp(){
+  document.getElementById('degNum').textContent=degBuf;
+}
+
 function updateDegPreview(){
-  const deg=parseFloat(document.getElementById('degInp').value)||0;
+  const deg=parseFloat(degBuf)||0;
   const c=document.getElementById('degCanvas'),cx2=c.getContext('2d');
-  const w=c.width,h=c.height,cx=w/2,cy=h/2,r=w/2-5;
+  const w=c.width,h=c.height,cx=w/2,cy=h/2,r=w/2-8;
   cx2.clearRect(0,0,w,h);
+  // Degree marks and labels
   [0,45,90,135,180,225,270,315].forEach(a=>{
     const rd=a*Math.PI/180;
-    cx2.strokeStyle='rgba(0,0,0,0.12)';cx2.lineWidth=0.8;
-    cx2.beginPath();cx2.moveTo(cx+Math.cos(rd)*(r-6),cy-Math.sin(rd)*(r-6));cx2.lineTo(cx+Math.cos(rd)*r,cy-Math.sin(rd)*r);cx2.stroke();
-    cx2.font='6px monospace';cx2.fillStyle='rgba(0,0,0,0.4)';cx2.textAlign='center';cx2.textBaseline='middle';
-    cx2.fillText(a+'',cx+Math.cos(rd)*(r-13),cy-Math.sin(rd)*(r-13));
+    cx2.strokeStyle='rgba(0,0,0,0.12)';cx2.lineWidth=1;
+    cx2.beginPath();cx2.moveTo(cx+Math.cos(rd)*(r-8),cy-Math.sin(rd)*(r-8));
+    cx2.lineTo(cx+Math.cos(rd)*r,cy-Math.sin(rd)*r);cx2.stroke();
+    cx2.font='10px DM Mono, monospace';cx2.fillStyle='rgba(0,0,0,0.45)';
+    cx2.textAlign='center';cx2.textBaseline='middle';
+    cx2.fillText(a+'',cx+Math.cos(rd)*(r-18),cy-Math.sin(rd)*(r-18));
   });
-  const rad=deg*Math.PI/180,ex=cx+Math.cos(rad)*r*0.7,ey=cy-Math.sin(rad)*r*0.7;
-  cx2.strokeStyle='#2a5c84';cx2.lineWidth=2;cx2.beginPath();cx2.moveTo(cx,cy);cx2.lineTo(ex,ey);cx2.stroke();
+  // Minor ticks every 15°
+  for(let a=0;a<360;a+=15){
+    if(a%45===0)continue;
+    const rd=a*Math.PI/180;
+    cx2.strokeStyle='rgba(0,0,0,0.07)';cx2.lineWidth=0.5;
+    cx2.beginPath();cx2.moveTo(cx+Math.cos(rd)*(r-4),cy-Math.sin(rd)*(r-4));
+    cx2.lineTo(cx+Math.cos(rd)*r,cy-Math.sin(rd)*r);cx2.stroke();
+  }
+  // Arrow
+  const rad=deg*Math.PI/180;
+  const ex=cx+Math.cos(rad)*r*0.72,ey=cy-Math.sin(rad)*r*0.72;
+  cx2.strokeStyle='#2a5c84';cx2.lineWidth=2.5;
+  cx2.beginPath();cx2.moveTo(cx,cy);cx2.lineTo(ex,ey);cx2.stroke();
   const ang=Math.atan2(ey-cy,ex-cx);
   cx2.fillStyle='#2a5c84';cx2.beginPath();
-  cx2.moveTo(ex,ey);cx2.lineTo(ex-8*Math.cos(ang-.4),ey-8*Math.sin(ang-.4));cx2.lineTo(ex-8*Math.cos(ang+.4),ey-8*Math.sin(ang+.4));cx2.closePath();cx2.fill();
+  cx2.moveTo(ex,ey);
+  cx2.lineTo(ex-10*Math.cos(ang-.4),ey-10*Math.sin(ang-.4));
+  cx2.lineTo(ex-10*Math.cos(ang+.4),ey-10*Math.sin(ang+.4));
+  cx2.closePath();cx2.fill();
+  // Center dot
+  cx2.beginPath();cx2.arc(cx,cy,3,0,Math.PI*2);
+  cx2.fillStyle='#2a5c84';cx2.fill();
 }
-function confirmDeg(){
-  const deg=parseFloat(document.getElementById('degInp').value);
-  if(!isNaN(deg)){customDeg=deg;document.querySelectorAll('.ck[data-d]').forEach(el=>el.classList.remove('active'));}
+
+function drawAngle(){
+  const deg=parseFloat(degBuf);
+  if(isNaN(deg))return;
+  customDeg=deg;
+  document.querySelectorAll('.ck[data-d]').forEach(el=>el.classList.remove('active'));
   hideDegPopup();
+  // Draw the wall using current length buffer and custom angle
+  const len=getLen();
+  if(len>0){
+    const{dx,dy}=dirVec(len,null,customDeg);
+    addProvVec(dx,dy);
+    numBuf='';updateLenDisp();
+    redraw();updateStats();updateCloseBtn();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
