@@ -2212,6 +2212,7 @@ function confirmAreaModal(){
   if(pendingAid!=null){
     const existingColor=areaNames.has(pendingAid)?areaNames.get(pendingAid).color:COLORS[areaNames.size%COLORS.length];
     areaNames.set(pendingAid,{name,color:existingColor});
+    markDirty();
   }
   document.getElementById('areaModal').classList.remove('show');
   document.getElementById('chipEditor').classList.remove('open');
@@ -2299,8 +2300,14 @@ function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r
 let currentFileId=null;
 let isDirty=false;
 
-function markDirty(){if(!isDirty){isDirty=true;updateFileUI();}}
-function markClean(){isDirty=false;updateFileUI();}
+function markDirty(){
+  if(!isDirty){isDirty=true;updateFileUI();}
+  window.onbeforeunload=()=>'You have unsaved changes.';
+}
+function markClean(){
+  isDirty=false;updateFileUI();
+  window.onbeforeunload=null;
+}
 
 function updateFileUI(){
   const btn=document.getElementById('saveBtn');
@@ -2492,7 +2499,7 @@ function newDrawing(){
   if(isDirty){
     if(!confirm('You have unsaved changes. Discard and start a new drawing?'))return;
   }else{
-    if(!confirm('Start a new drawing?'))return;
+    if(!confirm('Start a new drawing? Your current drawing will remain saved.'))return;
   }
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
