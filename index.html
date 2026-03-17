@@ -464,7 +464,11 @@ header{
   <div class="file-block">
     <button class="files-btn" onclick="showFilesModal()">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3.5h4l1.5 2H12v6H2z"/></svg>
-      Files
+      Manage
+    </button>
+    <button class="files-btn" onclick="newDrawing()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v10M2 7h10"/></svg>
+      New
     </button>
     <button class="save-btn" id="saveBtn" onclick="quickSave()" title="Save">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -731,11 +735,7 @@ header{
     <div class="files-modal-title">Drawings</div>
     <div class="files-list" id="filesList"></div>
     <div class="files-modal-btns">
-      <button class="mbtn mbtn-ghost" onclick="newDrawing()" style="flex:1">
-        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-right:4px"><path d="M7 2v10M2 7h10"/></svg>
-        New Drawing
-      </button>
-      <button class="mbtn mbtn-ghost" onclick="hideFilesModal()">Close</button>
+      <button class="mbtn mbtn-ghost" onclick="hideFilesModal()" style="flex:1">Close</button>
     </div>
   </div>
 </div>
@@ -1237,9 +1237,11 @@ function getOpenAidAtCursor(){
 }
 
 function updateCloseBtn(){
-  const aid=getOpenAidAtCursor();
   const btn=document.getElementById('paClose');
   const flip=document.getElementById('paFlip');
+  // Close Shape never shown in Select mode — it crowds the Delete Wall button
+  if(mode==='select'){btn.style.display='none';flip.style.display='none';return;}
+  const aid=getOpenAidAtCursor();
   if(aid!==null){
     const g=aidGeom(aid);
     btn.style.display=(g.ends.length===2&&g.pts.length>=3)?'':'none';
