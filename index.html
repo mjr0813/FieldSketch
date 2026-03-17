@@ -233,11 +233,11 @@ header{
 }
 .mchip-x:active{background:var(--danger-light);color:var(--danger);}
 .edit-labels-toggle{
-  font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;
+  font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;
   font-family:'Source Sans 3',sans-serif;font-weight:600;text-decoration:underline;
-  padding:2px 0;display:block;margin-top:4px;
+  padding:3px 0;display:block;margin-top:5px;
 }
-.edit-labels-toggle:active{color:var(--accent);}
+.edit-labels-toggle:active{opacity:.7;}
 
 
 
@@ -518,7 +518,7 @@ header{
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3.5h4l1.5 2H12v6H2z"/></svg>
       Manage
     </button>
-    <button class="archive-hbtn" onclick="archiveDrawing()">
+    <button class="files-btn" onclick="archiveDrawing()">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10v7.5H2z"/><path d="M1 2.5h12v1.5H1z"/><path d="M5.5 7h3"/></svg>
       Archive
     </button>
@@ -788,15 +788,28 @@ header{
   </div>
 </div>
 
+<!-- Export options modal -->
+<div class="archive-alert" id="exportModal">
+  <div class="archive-alert-box">
+    <h3>Export Drawing</h3>
+    <p>Preview opens the image in a new tab where you can use the Share button.<br>Download saves the image directly to your Files app.</p>
+    <div class="modal-btns">
+      <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
+      <button class="mbtn mbtn-ghost" onclick="exportPreview()">Preview</button>
+      <button class="mbtn mbtn-accent" onclick="exportDownload()">Download</button>
+    </div>
+  </div>
+</div>
+
 <!-- Archive tap-to-dismiss alert -->
 <div class="archive-alert" id="archiveAlert">
   <div class="archive-alert-box">
     <h3>Archive Drawing</h3>
-    <p>This will download <strong id="archiveFileName">this drawing</strong> as a <strong>.fsk file</strong> to your device's Downloads folder.<br><br>
-    If a file with this name already exists, a duplicate will be created. Manage copies in your Files app.</p>
+    <p>This will download <strong id="archiveFileName">this drawing</strong> to your device's Downloads folder.<br><br>
+    If a file with this name already exists, a duplicate will be created. Manage duplicate copies in your Files app.</p>
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideArchiveAlert()">Cancel</button>
-      <button class="mbtn mbtn-accent" onclick="confirmArchive()">Download .fsk</button>
+      <button class="mbtn mbtn-accent" onclick="confirmArchive()">Download</button>
     </div>
   </div>
 </div>
@@ -2182,15 +2195,20 @@ function chipSel(el,name){
   document.querySelectorAll('.mchip').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');document.getElementById('areaNameInp').value=name;
 }
-function cancelAreaModal(){document.getElementById('areaModal').classList.remove('show');pendingAid=null;}
+function cancelAreaModal(){
+  document.getElementById('areaModal').classList.remove('show');
+  document.getElementById('chipEditor').classList.remove('open');
+  pendingAid=null;
+}
 function confirmAreaModal(){
   const name=document.getElementById('areaNameInp').value.trim()||'Area';
   if(pendingAid!=null){
-    // Preserve existing color if already named, otherwise assign new color
     const existingColor=areaNames.has(pendingAid)?areaNames.get(pendingAid).color:COLORS[areaNames.size%COLORS.length];
     areaNames.set(pendingAid,{name,color:existingColor});
   }
-  document.getElementById('areaModal').classList.remove('show');pendingAid=null;
+  document.getElementById('areaModal').classList.remove('show');
+  document.getElementById('chipEditor').classList.remove('open');
+  pendingAid=null;
   redraw();updateStats();
 }
 document.getElementById('areaNameInp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmAreaModal();});
@@ -2199,6 +2217,12 @@ document.getElementById('areaNameInp').addEventListener('keydown',e=>{if(e.key==
 // EXPORT
 // ═══════════════════════════════════════════════════════
 function exportPNG(){
+  document.getElementById('exportModal').classList.add('show');
+}
+function hideExportModal(){
+  document.getElementById('exportModal').classList.remove('show');
+}
+function _renderExportCanvas(cb){
   fitScreen();
   setTimeout(()=>{
     const ec=document.createElement('canvas');
@@ -2206,16 +2230,38 @@ function exportPNG(){
     const ectx=ec.getContext('2d');
     ectx.fillStyle='#f0ede6';ectx.fillRect(0,0,ec.width,ec.height);
     ectx.drawImage(canvas,0,0);
-    // Open in new tab — preserves drawing state on iOS back navigation
+    cb(ec);
+  },150);
+}
+function _exportName(){
+  const file=currentFileId?getFile(currentFileId):null;
+  return(file?file.name:'FieldSketch').replace(/[^a-z0-9_\-\s]/gi,'_');
+}
+function exportPreview(){
+  hideExportModal();
+  _renderExportCanvas(ec=>{
     const dataUrl=ec.toDataURL('image/png');
+    const name=_exportName();
     const win=window.open('','_blank');
-    const file=currentFileId?getFile(currentFileId):null;
-    const name=file?file.name:'FieldSketch';
     if(win){
-      win.document.write(`<!DOCTYPE html><html><head><title>${name}</title></head><body style="margin:0;background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${dataUrl}" style="max-width:100%;height:auto"></body></html>`);
+      win.document.write(`<!DOCTYPE html><html><head><title>${name}</title></head><body style="margin:0;background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${dataUrl}" style="max-width:100%;height:auto" alt="${name}"></body></html>`);
       win.document.close();
     }
-  },150);
+  });
+}
+function exportDownload(){
+  hideExportModal();
+  _renderExportCanvas(ec=>{
+    const name=_exportName();
+    ec.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=name+'.png';
+      document.body.appendChild(a);a.click();
+      document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    },'image/png');
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2364,19 +2410,22 @@ function loadArchiveFile(e){
   reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
-      if(!data.verts||!data.edges)return alert('Invalid .fsk file.');
+      if(!data.verts||!data.edges)return alert('Invalid archive file.');
       if(isDirty&&!confirm('Discard unsaved changes and open archive?'))return;
-      // Import into localStorage
       const name=data.name||file.name.replace('.fsk','');
-      const id='fs_'+Date.now();
+      // Avoid duplicate — reuse existing entry with same name if present
       const files=allFiles();
-      files.unshift({id,name,savedAt:Date.now(),...data});
+      let existing=files.find(f=>f.name===name);
+      const id=existing?existing.id:'fs_'+Date.now();
+      const record={id,name,savedAt:Date.now(),...data};
+      const idx=files.findIndex(f=>f.id===id);
+      if(idx>=0)files[idx]=record;else files.unshift(record);
       saveFiles(files);
       currentFileId=id;
       restoreDrawingData(data);
       markClean();
       hideFilesModal();
-    }catch{alert('Could not read .fsk file.');}
+    }catch{alert('Could not read archive file.');}
   };
   reader.readAsText(file);
   e.target.value='';
@@ -2436,7 +2485,7 @@ function deleteFile(id){
 }
 
 function newDrawing(){
-  if(isDirty&&!confirm('Discard unsaved changes and start new?'))return;
+  if(!confirm('Start a new drawing? Your current drawing will remain saved.'))return;
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
