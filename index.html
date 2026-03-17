@@ -128,6 +128,8 @@ header{
 .sel-hint{font-size:10px;color:var(--muted);text-align:center;padding:6px 4px;font-style:italic;line-height:1.4;}
 .sel-label{font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-bottom:3px;}
 .sel-name-disp{font-size:13px;font-weight:600;color:var(--text);text-align:center;margin-bottom:5px;}
+/* Select panel needs touch events to reach buttons, not canvas */
+#selPanel,#selPanel *{touch-action:auto;}
 
 .snap-badge{
   position:absolute;top:8px;left:50%;transform:translateX(-50%);
@@ -168,6 +170,7 @@ header{
   width:var(--panel-w);flex-shrink:0;background:var(--surface);
   border-left:1px solid var(--border);display:flex;flex-direction:column;
   overflow-y:auto;overflow-x:hidden;
+  touch-action:auto;
 }
 /* hide scrollbar visually but keep scroll */
 .input-panel::-webkit-scrollbar{display:none;}
@@ -990,6 +993,7 @@ function doConfirm(){
   const g=aidGeom(aid);
   if(g.closed&&g.pts.length>=3){
     splitSharedEdges(aid);
+    duplicateSharedVerts(aid);
     const sqft=shoelace(aidGeom(aid).pts);
     pendingAid=aid;
     showAreaModal(sqft);
@@ -1012,6 +1016,7 @@ function closeActiveShape(){
   addEdge(e1,e2,aid);
   mergeAreaIds();
   splitSharedEdges(aid);
+  duplicateSharedVerts(aid);
   const g2=aidGeom(aid);
   const sqft=shoelace(g2.pts);
   pendingAid=aid;showAreaModal(sqft);
@@ -1038,6 +1043,31 @@ function splitSharedEdges(newAid){
       edges.delete(eid);
       addEdge(e.a,vid,parentAid);
       addEdge(vid,e.b,parentAid);
+    }
+  }
+}
+
+// After a shape closes, give it independent copies of any vertices
+// shared with other closed shapes. This allows shapes to move independently.
+function duplicateSharedVerts(newAid){
+  const newEdgesList=[...edges.entries()].filter(([,e])=>e.areaId===newAid);
+  const newVids=new Set(newEdgesList.flatMap(([,e])=>[e.a,e.b]));
+
+  for(const vid of newVids){
+    // Check if this vertex is used by any other areaId's edges
+    const usedElsewhere=[...edges.values()].some(e=>e.areaId!==newAid&&(e.a===vid||e.b===vid));
+    if(!usedElsewhere)continue;
+
+    // Create duplicate vertex at same position
+    const v=verts.get(vid);
+    const dupVid=nVid++;
+    verts.set(dupVid,{x:v.x,y:v.y});
+
+    // Rewire new shape's edges to use the duplicate
+    for(const[eid,e]of edges){
+      if(e.areaId!==newAid)continue;
+      if(e.a===vid)edges.set(eid,{a:dupVid,b:e.b,areaId:e.areaId});
+      else if(e.b===vid)edges.set(eid,{a:e.a,b:dupVid,areaId:e.areaId});
     }
   }
 }
