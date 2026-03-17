@@ -1079,7 +1079,7 @@ function updateStats(){
     if(p>maxPerim)maxPerim=p;
     if(areaNames.has(aid))named.push({...areaNames.get(aid),sqft:sq});
   }
-  document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:1}):'—';
+  document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:0}):'—';
   document.getElementById('hPerim').textContent=maxPerim>0?maxPerim.toFixed(1):'—';
 
   // To-close readout: use open areaId at cursor
@@ -1097,8 +1097,8 @@ function updateStats(){
   const ov=document.getElementById('areasOverlay');
   if(named.length){
     ov.classList.add('show');
-    document.getElementById('aoList').innerHTML=named.map(a=>`<div class="ao-row"><span class="ao-name"><span class="ao-dot" style="background:${a.color}"></span>${a.name}</span><span class="ao-sqft">${a.sqft.toLocaleString('en-US',{maximumFractionDigits:1})}</span></div>`).join('');
-    document.getElementById('glaVal').textContent=total.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²';
+    document.getElementById('aoList').innerHTML=named.map(a=>`<div class="ao-row"><span class="ao-name"><span class="ao-dot" style="background:${a.color}"></span>${a.name}</span><span class="ao-sqft">${a.sqft.toLocaleString('en-US',{maximumFractionDigits:0})}</span></div>`).join('');
+    document.getElementById('glaVal').textContent=total.toLocaleString('en-US',{maximumFractionDigits:0})+' ft²';
   }else ov.classList.remove('show');
 }
 
@@ -1174,7 +1174,7 @@ function drawComponents(){
       ctx.fillText(areaNames.get(aid).name.toUpperCase(),sc.x,sc.y-12);
       ctx.font=`400 10px 'DM Mono',monospace`;
       ctx.fillStyle=h2r(color,0.45);
-      ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:1})+' ft²',sc.x,sc.y+2);
+      ctx.fillText(sqft.toLocaleString('en-US',{maximumFractionDigits:0})+' ft²',sc.x,sc.y+2);
       ctx.fillText(perim.toFixed(1)+' ft perim',sc.x,sc.y+15);
       ctx.restore();
     }
@@ -1599,7 +1599,7 @@ function drawAngle(){
 // ═══════════════════════════════════════════════════════
 let pendingAid=null;
 function showAreaModal(sqft){
-  document.getElementById('areaModalSub').textContent=`Area: ${sqft.toLocaleString('en-US',{maximumFractionDigits:1})} ft²`;
+  document.getElementById('areaModalSub').textContent=`Area: ${sqft.toLocaleString('en-US',{maximumFractionDigits:0})} ft²`;
   document.getElementById('areaChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="chipSel(this,'${p}')">${p}</div>`).join('');
   document.getElementById('areaNameInp').value='';
   document.getElementById('areaModal').classList.add('show');
