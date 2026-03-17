@@ -2342,8 +2342,8 @@ function restoreAutosave(){
     const raw=localStorage.getItem(LS_AUTOSAVE);
     if(!raw)return false;
     const data=JSON.parse(raw);
+    if(data.cleared)return false; // user intentionally cleared canvas
     if(!data.verts||!data.edges)return false;
-    // Don't restore a blank canvas — must have at least one edge
     if(!data.edges.length)return false;
     restoreDrawingData(data);
     if(data.currentFileId)currentFileId=data.currentFileId;
@@ -2536,7 +2536,7 @@ function newDrawing(){
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
   undoStack=[];redoStack=[];
   currentFileId=null;
-  localStorage.removeItem(LS_AUTOSAVE);
+  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
   markClean();
   updateLenDisp();updateUrBtns();
   setMode('draw');
