@@ -1002,7 +1002,7 @@ function snapshot(){
     nVid,nEid,nAid,curX,curY,curPlaced,dimFlipped
   };
 }
-function pushUndo(){undoStack.push(snapshot());redoStack=[];updateUrBtns();markDirty();autoSave();}
+function pushUndo(){undoStack.push(snapshot());redoStack=[];updateUrBtns();markDirty();}
 function restoreSnap(s){
   verts=s.verts;edges=s.edges;areaNames=s.areaNames;
   nVid=s.nVid;nEid=s.nEid;nAid=s.nAid;
@@ -1013,13 +1013,13 @@ function doUndo(){
   if(!undoStack.length)return;
   redoStack.push(snapshot());
   restoreSnap(undoStack.pop());
-  numBuf='';updateLenDisp();redraw();updateStats();updateCloseBtn();updateUrBtns();
+  numBuf='';updateLenDisp();redraw();updateStats();updateCloseBtn();updateUrBtns();autoSave();
 }
 function doRedo(){
   if(!redoStack.length)return;
   undoStack.push(snapshot());
   restoreSnap(redoStack.pop());
-  numBuf='';updateLenDisp();redraw();updateStats();updateCloseBtn();updateUrBtns();
+  numBuf='';updateLenDisp();redraw();updateStats();updateCloseBtn();updateUrBtns();autoSave();
 }
 function updateUrBtns(){
   document.getElementById('paUndo').disabled=undoStack.length===0&&!hasProvisional();
@@ -1218,7 +1218,7 @@ function doConfirm(){
     showAreaModal(sqft);
   }
 
-  redraw();updateStats();updateCloseBtn();
+  redraw();updateStats();updateCloseBtn();autoSave();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1239,7 +1239,7 @@ function closeActiveShape(){
   const g2=aidGeom(aid);
   const sqft=shoelace(g2.pts);
   pendingAid=aid;showAreaModal(sqft);
-  redraw();updateStats();updateCloseBtn();
+  redraw();updateStats();updateCloseBtn();autoSave();
 }
 
 // When a new shape closes, split any edges of OTHER closed shapes
@@ -1801,7 +1801,7 @@ function onTE(e){
     if(mode==='select'&&selDragActive){
       selDragActive=false;
       // Snap on lift if a shape was being dragged
-      if(selAid!==null){snapAidToVerts(selAid);redraw();updateStats();}
+      if(selAid!==null){snapAidToVerts(selAid);redraw();updateStats();autoSave();}
     }
     panStart=null;
   }
@@ -1943,7 +1943,7 @@ function selCompass(dir){
   selBuf='';
   document.getElementById('ldNum').textContent='';
   document.getElementById('selLdNum').textContent='';
-  redraw();updateStats();
+  redraw();updateStats();autoSave();
 }
 
 function bumpVert(vid,dx,dy){
@@ -2025,7 +2025,7 @@ function selDelete(){
       curX=v.x;curY=v.y;curPlaced=true;
     }
   }
-  updateSelPanel();redraw();updateStats();updateCloseBtn();
+  updateSelPanel();redraw();updateStats();updateCloseBtn();autoSave();
 }
 
 function findAnyOpenAid(){
@@ -2343,9 +2343,10 @@ function restoreAutosave(){
     if(!raw)return false;
     const data=JSON.parse(raw);
     if(!data.verts||!data.edges)return false;
+    // Don't restore a blank canvas — must have at least one edge
+    if(!data.edges.length)return false;
     restoreDrawingData(data);
     if(data.currentFileId)currentFileId=data.currentFileId;
-    // Restore dirty state — unsaved changes before refresh should still show as unsaved
     isDirty=data.isDirty===true;
     return true;
   }catch{return false;}
