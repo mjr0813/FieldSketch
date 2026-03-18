@@ -107,6 +107,7 @@
     font-weight: 600;
     cursor: pointer;
     letter-spacing: 0.02em;
+    touch-action: manipulation;
     transition: background 0.15s, transform 0.1s;
   }
   .btn-launch-primary:active { background: #1e4464; transform: scale(0.99); }
@@ -121,6 +122,7 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+    touch-action: manipulation;
     transition: background 0.15s;
   }
   .btn-launch-secondary:active { background: var(--surface3); }
@@ -757,8 +759,8 @@
     </div>
     <div class="launch-divider"></div>
     <div class="launch-actions">
-      <button class="btn-launch-primary" id="btn-new-inspection">New Inspection</button>
-      <button class="btn-launch-secondary" id="btn-resume" disabled>Resume Inspection</button>
+      <button class="btn-launch-primary" id="btn-new-inspection" onclick="onNewInspectionTap()">New Inspection</button>
+      <button class="btn-launch-secondary" id="btn-resume" onclick="onResumeTap()" disabled>Resume Inspection</button>
       <div class="launch-resume-meta" id="resume-meta"></div>
     </div>
   </div>
@@ -1180,31 +1182,33 @@ function loadState() {
 // ══════════════════════════════════════════
 // LAUNCH
 // ══════════════════════════════════════════
+let _savedOnLaunch = null;
+
 function initLaunch() {
-  const saved = loadState();
+  _savedOnLaunch = loadState();
   const btnResume = document.getElementById('btn-resume');
   const resumeMeta = document.getElementById('resume-meta');
-  if (saved) {
-    btnResume.classList.remove('disabled');
+  if (_savedOnLaunch) {
     btnResume.disabled = false;
-    const addr = saved.fields?.['subject.address'] || 'Unknown address';
-    const date = saved.fields?.['subject.inspection_date'] || '';
+    const addr = _savedOnLaunch.fields?.['subject.address'] || 'Unknown address';
+    const date = _savedOnLaunch.fields?.['subject.inspection_date'] || '';
     resumeMeta.textContent = addr + (date ? ' · ' + date : '');
   }
-  document.getElementById('btn-new-inspection').addEventListener('click', () => {
-    if (saved) {
-      openModal('modal-confirm-new');
-    } else {
-      openNewInspectionModal();
-    }
-  });
-  btnResume.addEventListener('click', () => {
-    if (!saved) return;
-    state = saved;
-    startApp();
-  });
-  // Set today's date in new modal
   document.getElementById('new-date').value = new Date().toISOString().slice(0,10);
+}
+
+function onNewInspectionTap() {
+  if (_savedOnLaunch) {
+    openModal('modal-confirm-new');
+  } else {
+    openNewInspectionModal();
+  }
+}
+
+function onResumeTap() {
+  if (!_savedOnLaunch) return;
+  state = _savedOnLaunch;
+  startApp();
 }
 
 function proceedNew() {
