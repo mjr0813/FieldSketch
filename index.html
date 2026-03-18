@@ -2387,6 +2387,8 @@ function restoreDrawingData(data){
   updateLenDisp();updateUrBtns();
   setMode('draw');fitScreen();
   redraw();updateStats();updateCloseBtn();
+  // Always write autosave when a file is opened so refresh restores the correct drawing
+  autoSave();
 }
 
 // ── Save ─────────────────────────────────────────────
