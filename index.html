@@ -733,6 +733,10 @@ header{
               <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3.5" width="7" height="9" rx="1"/><path d="M4.5 3.5V2.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1"/></svg>
               Duplicate
             </button>
+            <button class="pa-btn danger" id="selDelShapeBtn" onclick="selDeleteShape()" style="display:none">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+              Delete Shape
+            </button>
           </div>
           <div class="ip-lbl" id="selActionLbl" style="margin-top:6px"></div>
         </div>
@@ -858,6 +862,17 @@ header{
     <div class="modal-title">Paste As</div>
     <div class="modal-sub">Select a type or enter a custom name for the duplicate</div>
     <div class="modal-chips" id="pasteChips"></div>
+    <button class="edit-labels-toggle" onclick="togglePasteLabelEditor()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
+      Edit Labels
+    </button>
+    <div class="chip-editor" id="pasteChipEditor">
+      <div class="chip-editor-row">
+        <input type="text" class="chip-edit-inp" id="pasteChipEditInp" placeholder="New label…">
+        <button class="chip-add-btn" onclick="addPresetFromPaste()">Add</button>
+      </div>
+      <div class="modal-chips" id="pasteChipEditorList"></div>
+    </div>
     <input type="text" class="modal-inp" id="pasteNameInp" placeholder="Custom name…">
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="cancelPaste()">Cancel</button>
@@ -1909,6 +1924,7 @@ function updateSelPanel(){
   const deleteBtn=document.getElementById('selDeleteBtn');
   const renameBtn=document.getElementById('selRenameBtn');
   const dupeBtn=document.getElementById('selDupeBtn');
+  const delShapeBtn=document.getElementById('selDelShapeBtn');
   const actionLbl=document.getElementById('selActionLbl');
 
   if(selWallEid!==null){
@@ -1917,13 +1933,13 @@ function updateSelPanel(){
     const len=Math.hypot(b.x-a.x,b.y-a.y);
     hint.style.display='none';info.style.display='';
     nameDisp.textContent='';
-    deleteBtn.style.display='';renameBtn.style.display='none';dupeBtn.style.display='none';
+    deleteBtn.style.display='';renameBtn.style.display='none';dupeBtn.style.display='none';delShapeBtn.style.display='none';
     actionLbl.textContent='Enter distance + direction to bump';
   }else if(selAid!==null){
     hint.style.display='none';info.style.display='';
     const name=areaNames.has(selAid)?areaNames.get(selAid).name:'Unnamed';
     nameDisp.textContent=name;
-    deleteBtn.style.display='none';renameBtn.style.display='';dupeBtn.style.display='';
+    deleteBtn.style.display='none';renameBtn.style.display='';dupeBtn.style.display='';delShapeBtn.style.display='';
     actionLbl.textContent='Enter distance + direction to move';
   }else{
     hint.style.display='';info.style.display='none';
@@ -2064,6 +2080,18 @@ function selRename(){
   showAreaModal(sqft);
 }
 
+function selDeleteShape(){
+  if(selAid===null)return;
+  pushUndo();
+  // Remove all edges belonging to this shape
+  for(const[eid,e]of[...edges])if(e.areaId===selAid)edges.delete(eid);
+  // Remove name entry
+  areaNames.delete(selAid);
+  pruneVerts();
+  selAid=null;
+  updateSelPanel();redraw();updateStats();updateCloseBtn();autoSave();
+}
+
 // ── Duplicate / Paste As ─────────────────────────────
 let copyAid=null; // areaId being duplicated
 
@@ -2086,23 +2114,62 @@ function pasteChipSel(el,name){
 
 function cancelPaste(){
   document.getElementById('pasteModal').classList.remove('show');
+  document.getElementById('pasteChipEditor').classList.remove('open');
   copyAid=null;
+}
+
+function togglePasteLabelEditor(){
+  const ed=document.getElementById('pasteChipEditor');
+  const isOpen=ed.classList.contains('open');
+  ed.classList.toggle('open',!isOpen);
+  if(!isOpen)renderPasteChipEditor();
+}
+
+function renderPasteChipEditor(){
+  document.getElementById('pasteChipEditorList').innerHTML=PRESETS.map((p,i)=>
+    `<div class="mchip-wrap">
+      <div class="mchip">${p}</div>
+      <button class="mchip-x" onclick="removePresetFromPaste(${i})">×</button>
+    </div>`
+  ).join('');
+}
+
+function addPresetFromPaste(){
+  const inp=document.getElementById('pasteChipEditInp');
+  const val=inp.value.trim();
+  if(!val||PRESETS.includes(val))return;
+  PRESETS.push(val);savePresets();inp.value='';
+  renderPasteChipEditor();
+  document.getElementById('pasteChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="pasteChipSel(this,'${p}')">${p}</div>`).join('');
+}
+
+function removePresetFromPaste(i){
+  PRESETS.splice(i,1);savePresets();
+  renderPasteChipEditor();
+  document.getElementById('pasteChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="pasteChipSel(this,'${p}')">${p}</div>`).join('');
 }
 
 function confirmPaste(){
   const name=document.getElementById('pasteNameInp').value.trim()||'Copy';
   document.getElementById('pasteModal').classList.remove('show');
+  document.getElementById('pasteChipEditor').classList.remove('open');
   if(copyAid===null)return;
 
   // Build geometry for the source shape
   const srcEdges=[...edges.values()].filter(e=>e.areaId===copyAid);
   const srcVids=new Set(srcEdges.flatMap(e=>[e.a,e.b]));
 
-  // Find southernmost (min Y) vertex of source for offset calculation
-  let minY=Infinity;
-  for(const vid of srcVids){const v=verts.get(vid);if(v.y<minY)minY=v.y;}
-  // Offset: place new shape 10ft south of southernmost vertex
-  const offsetY=-10; // world coords: Y increases northward
+  // Find bounds of source shape
+  let minY=Infinity,maxY=-Infinity;
+  for(const vid of srcVids){
+    const v=verts.get(vid);
+    if(v.y<minY)minY=v.y;
+    if(v.y>maxY)maxY=v.y;
+  }
+  const shapeHeight=maxY-minY;
+  // Place copy so its top (maxY) is 10ft below the original's bottom (minY)
+  // New maxY = minY - 10, so shift = (minY - 10) - maxY = -(shapeHeight + 10)
+  const offsetY=-(shapeHeight+10);
 
   pushUndo();
 
