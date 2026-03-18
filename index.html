@@ -2688,10 +2688,25 @@ function renderFilesList(){
         <div class="file-row-meta">${meta}</div>
       </div>
       <button class="frb open" onclick="openFile('${f.id}')">Open</button>
+      <button class="frb" onclick="renameFile('${f.id}')">Rename</button>
       <button class="frb arc" onclick="archiveFile('${f.id}')">Archive</button>
       <button class="frb del" onclick="deleteFile('${f.id}')">Delete</button>
     </div>`;
   }).join('');
+}
+
+function renameFile(id){
+  const file=getFile(id);if(!file)return;
+  const newName=prompt('Rename "'+file.name+'" to:\n(Archive separately to update your saved file)',file.name);
+  if(!newName||!newName.trim()||newName.trim()===file.name)return;
+  const files=allFiles();
+  const idx=files.findIndex(f=>f.id===id);
+  if(idx<0)return;
+  files[idx].name=newName.trim();
+  saveFiles(files);
+  // Update header if this is the current file
+  if(id===currentFileId)autoSave();
+  renderFilesList();
 }
 
 function openFile(id){
