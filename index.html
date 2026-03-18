@@ -582,7 +582,8 @@ header{
   <button class="tog on" id="btnSnap" onclick="toggleSnap()">Snap</button>
   <button class="tog on" id="btnDims" onclick="toggleDims()">Dims</button>
   <button class="tog on" id="btnFill" onclick="toggleFill()">Fill</button>
-  <button class="tog" id="btnAngles" onclick="toggleAngles()">Angles</button>
+  <button class="tog on" id="btnAngles" onclick="toggleAngles()">Angles</button>
+  <button class="tog on" id="btnLabels" onclick="toggleLabels()">Labels</button>
 
   <div class="spacer"></div>
 
@@ -728,6 +729,10 @@ header{
               <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
               Rename
             </button>
+            <button class="pa-btn" id="selDupeBtn" onclick="selDuplicate()" style="display:none">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3.5" width="7" height="9" rx="1"/><path d="M4.5 3.5V2.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1"/></svg>
+              Duplicate
+            </button>
           </div>
           <div class="ip-lbl" id="selActionLbl" style="margin-top:6px"></div>
         </div>
@@ -843,6 +848,20 @@ header{
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideSavePrompt()">Cancel</button>
       <button class="mbtn mbtn-accent" onclick="confirmSave()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Paste As modal -->
+<div class="modal-overlay" id="pasteModal">
+  <div class="modal">
+    <div class="modal-title">Paste As</div>
+    <div class="modal-sub">Select a type or enter a custom name for the duplicate</div>
+    <div class="modal-chips" id="pasteChips"></div>
+    <input type="text" class="modal-inp" id="pasteNameInp" placeholder="Custom name…">
+    <div class="modal-btns">
+      <button class="mbtn mbtn-ghost" onclick="cancelPaste()">Cancel</button>
+      <button class="mbtn mbtn-accent" onclick="confirmPaste()">Paste</button>
     </div>
   </div>
 </div>
@@ -984,7 +1003,7 @@ function findAidOpen(vid){
 // APP STATE
 // ═══════════════════════════════════════════════════════
 let mode='draw';
-let snapOn=true,showDims=true,showFill=true,showAngles=false;
+let snapOn=true,showDims=true,showFill=true,showAngles=false,showLabels=true;
 let customDeg=null,activeDir='N',dimFlipped=true;
 let curX=0,curY=0,curPlaced=false;
 let numBuf='';
@@ -1484,7 +1503,7 @@ function drawComponents(){
     if(showAngles&&closed)drawAngles(pts);
 
     // Area label
-    if(closed&&areaNames.has(aid)){
+    if(showLabels&&closed&&areaNames.has(aid)){
       const{cx,cy}=polyCentroid(pts);
       const sc=w2s(cx,cy);
       const sqft=shoelace(pts);
@@ -1661,6 +1680,7 @@ function toggleSnap(){snapOn=!snapOn;document.getElementById('btnSnap').classLis
 function toggleDims(){showDims=!showDims;document.getElementById('btnDims').classList.toggle('on',showDims);redraw();}
 function toggleFill(){showFill=!showFill;document.getElementById('btnFill').classList.toggle('on',showFill);redraw();}
 function toggleAngles(){showAngles=!showAngles;document.getElementById('btnAngles').classList.toggle('on',showAngles);redraw();}
+function toggleLabels(){showLabels=!showLabels;document.getElementById('btnLabels').classList.toggle('on',showLabels);redraw();}
 function flipDims(){dimFlipped=!dimFlipped;redraw();}
 
 // ═══════════════════════════════════════════════════════
@@ -1888,6 +1908,7 @@ function updateSelPanel(){
   const nameDisp=document.getElementById('selNameDisp');
   const deleteBtn=document.getElementById('selDeleteBtn');
   const renameBtn=document.getElementById('selRenameBtn');
+  const dupeBtn=document.getElementById('selDupeBtn');
   const actionLbl=document.getElementById('selActionLbl');
 
   if(selWallEid!==null){
@@ -1896,13 +1917,13 @@ function updateSelPanel(){
     const len=Math.hypot(b.x-a.x,b.y-a.y);
     hint.style.display='none';info.style.display='';
     nameDisp.textContent='';
-    deleteBtn.style.display='';renameBtn.style.display='none';
+    deleteBtn.style.display='';renameBtn.style.display='none';dupeBtn.style.display='none';
     actionLbl.textContent='Enter distance + direction to bump';
   }else if(selAid!==null){
     hint.style.display='none';info.style.display='';
     const name=areaNames.has(selAid)?areaNames.get(selAid).name:'Unnamed';
     nameDisp.textContent=name;
-    deleteBtn.style.display='none';renameBtn.style.display='';
+    deleteBtn.style.display='none';renameBtn.style.display='';dupeBtn.style.display='';
     actionLbl.textContent='Enter distance + direction to move';
   }else{
     hint.style.display='';info.style.display='none';
@@ -2042,6 +2063,83 @@ function selRename(){
   pendingAid=selAid;
   showAreaModal(sqft);
 }
+
+// ── Duplicate / Paste As ─────────────────────────────
+let copyAid=null; // areaId being duplicated
+
+function selDuplicate(){
+  if(selAid===null)return;
+  copyAid=selAid;
+  // Show Paste As modal with chips
+  document.getElementById('pasteChips').innerHTML=
+    PRESETS.map(p=>`<div class="mchip" onclick="pasteChipSel(this,'${p}')">${p}</div>`).join('');
+  document.getElementById('pasteNameInp').value='';
+  document.getElementById('pasteModal').classList.add('show');
+  setTimeout(()=>document.getElementById('pasteNameInp').focus(),300);
+}
+
+function pasteChipSel(el,name){
+  document.querySelectorAll('#pasteChips .mchip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('pasteNameInp').value=name;
+}
+
+function cancelPaste(){
+  document.getElementById('pasteModal').classList.remove('show');
+  copyAid=null;
+}
+
+function confirmPaste(){
+  const name=document.getElementById('pasteNameInp').value.trim()||'Copy';
+  document.getElementById('pasteModal').classList.remove('show');
+  if(copyAid===null)return;
+
+  // Build geometry for the source shape
+  const srcEdges=[...edges.values()].filter(e=>e.areaId===copyAid);
+  const srcVids=new Set(srcEdges.flatMap(e=>[e.a,e.b]));
+
+  // Find southernmost (min Y) vertex of source for offset calculation
+  let minY=Infinity;
+  for(const vid of srcVids){const v=verts.get(vid);if(v.y<minY)minY=v.y;}
+  // Offset: place new shape 10ft south of southernmost vertex
+  const offsetY=-10; // world coords: Y increases northward
+
+  pushUndo();
+
+  // Create new vertex mapping: old vid → new vid
+  const vidMap=new Map();
+  for(const vid of srcVids){
+    const v=verts.get(vid);
+    const newVid=nVid++;
+    verts.set(newVid,{x:v.x,y:v.y+offsetY});
+    vidMap.set(vid,newVid);
+  }
+
+  // Assign new areaId
+  const newAid=nAid++;
+
+  // Create new edges using mapped vertices
+  for(const e of srcEdges){
+    const na=vidMap.get(e.a),nb=vidMap.get(e.b);
+    const newEid=nEid++;
+    edges.set(newEid,{a:na,b:nb,areaId:newAid});
+  }
+
+  // Name the new area
+  const color=COLORS[(areaNames.size)%COLORS.length];
+  areaNames.set(newAid,{name,color});
+
+  // Select the new shape
+  selAid=newAid;
+  copyAid=null;
+
+  updateSelPanel();
+  redraw();updateStats();autoSave();
+}
+
+document.getElementById('pasteNameInp').addEventListener('keydown',e=>{
+  if(e.key==='Enter')confirmPaste();
+});
 
 // Draw selection highlights
 function drawSelectionHighlight(){
