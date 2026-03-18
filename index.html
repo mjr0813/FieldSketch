@@ -597,6 +597,27 @@ header{
   <button class="tog on" id="btnAngles" onclick="toggleAngles()">Angles</button>
   <button class="tog on" id="btnLabels" onclick="toggleLabels()">Labels</button>
 
+  <!-- Select mode context actions — shown only when something is selected -->
+  <div class="tb-sep" id="selActSep" style="display:none"></div>
+  <div id="selActGroup" style="display:none;display:none;align-items:center;gap:3px">
+    <button class="tbtn" id="tbRenameBtn" onclick="selRename()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
+      Rename
+    </button>
+    <button class="tbtn" id="tbDupeBtn" onclick="selDuplicate()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3.5" width="7" height="9" rx="1"/><path d="M4.5 3.5V2.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1"/></svg>
+      Duplicate
+    </button>
+    <button class="tbtn" id="tbDelWallBtn" onclick="selDelete()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+      Delete Wall
+    </button>
+    <button class="tbtn" id="tbDelShapeBtn" onclick="selDeleteShape()" style="color:var(--danger)">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+      Delete Shape
+    </button>
+  </div>
+
   <div class="spacer"></div>
 
   <button class="hbtn" onclick="fitScreen()">
@@ -732,27 +753,19 @@ header{
         <div id="selHint" class="sel-hint">Tap a wall or shape</div>
         <div id="selInfo" style="display:none">
           <div class="sel-name-disp" id="selNameDisp"></div>
-          <div class="pa-row" style="gap:6px">
-            <button class="pa-btn" id="selDeleteBtn" onclick="selDelete()" style="display:none">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
-              Delete Wall
-            </button>
-            <button class="pa-icon" id="selRenameBtn" onclick="selRename()" style="display:none" title="Rename">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
-            </button>
-            <button class="pa-icon success" id="selDupeBtn" onclick="selDuplicate()" style="display:none" title="Duplicate">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3.5" width="7" height="9" rx="1"/><path d="M4.5 3.5V2.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1"/></svg>
-            </button>
-            <button class="pa-icon danger" id="selDelShapeBtn" onclick="selDeleteShape()" style="display:none" title="Delete Shape">
-              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
-            </button>
-          </div>
           <div class="ip-lbl" id="selActionLbl" style="margin-top:6px"></div>
         </div>
       </div>
-      <!-- Hidden elements still needed by updateSelPanel JS -->
+      <!-- Hidden elements still needed by JS -->
       <div id="selActionPanel" style="display:none">
         <span id="selLdNum"></span>
+      </div>
+      <!-- Keep hidden buttons so existing JS getElementById calls don't break -->
+      <div style="display:none">
+        <button id="selDeleteBtn"></button>
+        <button id="selRenameBtn"></button>
+        <button id="selDupeBtn"></button>
+        <button id="selDelShapeBtn"></button>
       </div>
     </div>
 
@@ -1719,7 +1732,11 @@ function setMode(m){
   // Show/hide select panel
   document.getElementById('selPanel').style.display=(m==='select')?'':'none';
   // Clear selection when leaving select mode
-  if(m!=='select'){selWallEid=null;selAid=null;selBuf='';}
+  if(m!=='select'){
+    selWallEid=null;selAid=null;selBuf='';
+    document.getElementById('selActSep').style.display='none';
+    document.getElementById('selActGroup').style.display='none';
+  }
   if(m==='draw'&&!curPlaced){
     const w=document.getElementById('canvasWrap').clientWidth;
     const h=document.getElementById('canvasWrap').clientHeight;
@@ -1930,29 +1947,33 @@ function updateSelPanel(){
   const hint=document.getElementById('selHint');
   const info=document.getElementById('selInfo');
   const nameDisp=document.getElementById('selNameDisp');
-  const deleteBtn=document.getElementById('selDeleteBtn');
-  const renameBtn=document.getElementById('selRenameBtn');
-  const dupeBtn=document.getElementById('selDupeBtn');
-  const delShapeBtn=document.getElementById('selDelShapeBtn');
   const actionLbl=document.getElementById('selActionLbl');
+  const sep=document.getElementById('selActSep');
+  const grp=document.getElementById('selActGroup');
+  const tbRename=document.getElementById('tbRenameBtn');
+  const tbDupe=document.getElementById('tbDupeBtn');
+  const tbDelWall=document.getElementById('tbDelWallBtn');
+  const tbDelShape=document.getElementById('tbDelShapeBtn');
 
   if(selWallEid!==null){
-    const e=edges.get(selWallEid);
-    const a=verts.get(e.a),b=verts.get(e.b);
-    const len=Math.hypot(b.x-a.x,b.y-a.y);
     hint.style.display='none';info.style.display='';
     nameDisp.textContent='';
-    deleteBtn.style.display='';renameBtn.style.display='none';dupeBtn.style.display='none';delShapeBtn.style.display='none';
     actionLbl.textContent='Enter distance + direction to bump';
+    sep.style.display='';grp.style.display='flex';
+    tbRename.style.display='none';tbDupe.style.display='none';
+    tbDelWall.style.display='';tbDelShape.style.display='none';
   }else if(selAid!==null){
     hint.style.display='none';info.style.display='';
     const name=areaNames.has(selAid)?areaNames.get(selAid).name:'Unnamed';
     nameDisp.textContent=name;
-    deleteBtn.style.display='none';renameBtn.style.display='';dupeBtn.style.display='';delShapeBtn.style.display='';
     actionLbl.textContent='Enter distance + direction to move';
+    sep.style.display='';grp.style.display='flex';
+    tbRename.style.display='';tbDupe.style.display='';
+    tbDelWall.style.display='none';tbDelShape.style.display='';
   }else{
     hint.style.display='';info.style.display='none';
     document.getElementById('ldNum').textContent='';
+    sep.style.display='none';grp.style.display='none';
   }
 }
 
