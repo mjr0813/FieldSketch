@@ -2394,6 +2394,7 @@ function restoreDrawingData(data){
 // ── Save ─────────────────────────────────────────────
 function quickSave(){
   if(!isDirty)return;
+  if(!edges.size){alert('Nothing to save — draw at least one wall first.');return;}
   if(currentFileId&&getFile(currentFileId)){
     saveDrawingData(currentFileId,getFile(currentFileId).name);
     markClean();
