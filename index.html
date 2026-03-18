@@ -2113,9 +2113,7 @@ function selRename(){
 function selDeleteShape(){
   if(selAid===null)return;
   pushUndo();
-  // Remove all edges belonging to this shape
   for(const[eid,e]of[...edges])if(e.areaId===selAid)edges.delete(eid);
-  // Remove name entry
   areaNames.delete(selAid);
   pruneVerts();
   selAid=null;
@@ -2538,12 +2536,13 @@ function restoreAutosave(){
     const raw=localStorage.getItem(LS_AUTOSAVE);
     if(!raw)return false;
     const data=JSON.parse(raw);
-    if(data.cleared)return false; // user intentionally cleared canvas
+    if(data.cleared)return false;
     if(!data.verts||!data.edges)return false;
     if(!data.edges.length)return false;
-    restoreDrawingData(data);
+    // Set file identity BEFORE restoreDrawingData so autoSave() inside it captures them
     if(data.currentFileId)currentFileId=data.currentFileId;
     isDirty=data.isDirty===true;
+    restoreDrawingData(data);
     return true;
   }catch{return false;}
 }
