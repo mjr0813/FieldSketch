@@ -2684,11 +2684,15 @@ function renderFilesList(){
     const cur=f.id===currentFileId?' current':'';
     return`<div class="file-row${cur}">
       <div class="file-row-info">
-        <div class="file-row-name">${f.name}</div>
+        <div style="display:flex;align-items:center;gap:5px">
+          <button onclick="renameFile('${f.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;display:flex;flex-shrink:0">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
+          </button>
+          <div class="file-row-name">${f.name}</div>
+        </div>
         <div class="file-row-meta">${meta}</div>
       </div>
       <button class="frb open" onclick="openFile('${f.id}')">Open</button>
-      <button class="frb" onclick="renameFile('${f.id}')">Rename</button>
       <button class="frb arc" onclick="archiveFile('${f.id}')">Archive</button>
       <button class="frb del" onclick="deleteFile('${f.id}')">Delete</button>
     </div>`;
