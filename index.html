@@ -2709,7 +2709,7 @@ function renameFile(id){
   files[idx].name=newName.trim();
   saveFiles(files);
   // Update header if this is the current file
-  if(id===currentFileId)autoSave();
+  if(id===currentFileId){autoSave();updateFileUI();}
   renderFilesList();
 }
 
