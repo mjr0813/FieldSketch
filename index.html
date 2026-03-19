@@ -55,15 +55,33 @@ header{
 .logo-text{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;}
 .logo-text em{color:var(--accent);font-style:normal;}
 
-.header-stats{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  gap:20px;padding:0 10px;overflow:hidden;
+/* Drawing name + date in header center */
+.header-drawing{
+  flex:1;display:flex;align-items:center;gap:10px;padding:0 16px;min-width:0;overflow:hidden;
 }
-.hstat{display:flex;flex-direction:column;align-items:center;gap:1px;}
-.hstat-val{font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:var(--text);line-height:1;}
-.hstat-lbl{font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);}
-.hdiv{width:1px;height:24px;background:var(--border2);}
+.header-drawing-name{
+  font-family:'Playfair Display',serif;font-size:14px;font-weight:600;
+  color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.header-drawing-date{
+  font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);
+  white-space:nowrap;flex-shrink:0;
+}
+.header-divider{width:1px;height:20px;background:var(--border2);flex-shrink:0;}
 
+/* Autosave indicator */
+.autosave-ind{
+  display:flex;align-items:center;gap:5px;padding:4px 10px;
+  border-radius:20px;font-family:'Source Sans 3',sans-serif;
+  font-size:11px;font-weight:600;color:var(--muted);
+  border:1px solid transparent;transition:all .3s;flex-shrink:0;
+}
+.autosave-ind svg{width:11px;height:11px;flex-shrink:0;}
+.autosave-ind.saved{
+  color:var(--success);background:#e6f2ec;border-color:rgba(42,99,72,.2);
+}
+
+/* To-close indicator (kept from before) */
 .close-ind{
   display:flex;align-items:center;gap:7px;padding:4px 10px;
   background:var(--warning-light);border:1px solid rgba(107,84,24,.2);border-radius:7px;
@@ -86,124 +104,135 @@ header{
 .hbtn svg{width:11px;height:11px;}
 .hbtn:active{transform:scale(.96);opacity:.8;}
 .hbtn.danger{background:var(--danger-light);color:var(--danger);border-color:rgba(122,42,42,.2);}
+.hbtn.accent{background:var(--accent);color:white;border-color:var(--accent);}
 
-/* ── FILE MANAGEMENT ──────────────────────────────── */
-.file-block{
-  display:flex;align-items:center;gap:5px;padding:0 10px;
-  border-right:1px solid var(--border2);height:100%;flex-shrink:0;
-}
-.fname-display{
-  font-family:'Playfair Display',serif;font-size:13px;font-weight:600;
-  color:var(--text2);white-space:nowrap;max-width:120px;
-  overflow:hidden;text-overflow:ellipsis;cursor:default;
-}
-.fname-display.untitled{color:var(--muted);font-style:italic;}
-.fname-display.dirty{color:var(--text);}
-.save-btn{
-  width:28px;height:26px;border-radius:6px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--muted);cursor:pointer;
+/* ── LANDING PAGE ─────────────────────────────────── */
+#landing{
+  position:fixed;inset:0;background:var(--bg);
   display:flex;align-items:center;justify-content:center;
-  transition:all .15s;flex-shrink:0;
+  z-index:500;
 }
-.save-btn svg{width:12px;height:12px;}
-.save-btn:active{transform:scale(.93);}
-.save-btn.dirty{background:var(--accent-light);color:var(--accent);border-color:rgba(42,92,132,.3);}
-.files-btn{
-  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:600;
-  padding:5px 8px;border-radius:7px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text2);cursor:pointer;
-  display:flex;align-items:center;gap:3px;transition:all .13s;white-space:nowrap;
+#landing.hidden{display:none;}
+.landing-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;box-shadow:var(--shadow-lg);
+  padding:36px 40px 32px;width:min(440px,90vw);
 }
-.files-btn svg{width:11px;height:11px;}
-.files-btn:active{transform:scale(.96);}
-.archive-hbtn{
-  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:600;
-  padding:5px 8px;border-radius:7px;border:1px solid rgba(42,99,72,.25);
-  background:#e6f2ec;color:var(--success);cursor:pointer;
-  display:flex;align-items:center;gap:3px;transition:all .13s;white-space:nowrap;
+.landing-suite{
+  font-family:'DM Mono',monospace;font-size:10px;font-weight:400;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:6px;
 }
-.archive-hbtn svg{width:11px;height:11px;}
-.archive-hbtn:active{transform:scale(.96);opacity:.85;}
-
-/* Archive tap-to-dismiss alert */
-.archive-alert{
-  position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(4px);
-  z-index:600;display:flex;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .2s;
+.landing-brand{
+  display:flex;align-items:center;gap:10px;margin-bottom:28px;
 }
-.archive-alert.show{opacity:1;pointer-events:all;}
-.archive-alert-box{
-  background:var(--surface);border:1px solid var(--border);border-radius:16px;
-  padding:22px;width:min(360px,88vw);box-shadow:var(--shadow-lg);
-  transform:scale(.95) translateY(8px);transition:transform .2s;
+.landing-logo-mark{
+  width:32px;height:32px;background:var(--accent);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.archive-alert.show .archive-alert-box{transform:scale(1) translateY(0);}
-.archive-alert-box h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:10px;}
-.archive-alert-box p{font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:16px;}
-
-/* Manage modal */
-.files-overlay{
-  position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(5px);
-  z-index:400;display:flex;align-items:center;justify-content:center;
-  opacity:0;pointer-events:none;transition:opacity .2s;
+.landing-logo-mark svg{width:17px;height:17px;}
+.landing-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--text);}
+.landing-title em{color:var(--accent);font-style:normal;}
+.landing-actions{display:flex;gap:10px;margin-bottom:28px;}
+.landing-btn-primary{
+  flex:1;height:44px;border-radius:10px;border:none;
+  background:var(--accent);color:white;
+  font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .13s;
 }
-.files-overlay.show{opacity:1;pointer-events:all;}
-.files-modal{
-  background:var(--surface);border:1px solid var(--border);border-radius:18px;
-  padding:24px;width:min(460px,92vw);max-height:82vh;
-  display:flex;flex-direction:column;gap:14px;
-  box-shadow:var(--shadow-lg);
-  transform:scale(.95) translateY(8px);transition:transform .2s;
+.landing-btn-primary:active{opacity:.85;transform:scale(.98);}
+.landing-btn-primary svg{width:13px;height:13px;}
+.landing-btn-secondary{
+  flex:1;height:44px;border-radius:10px;
+  border:1px solid var(--border);background:var(--surface2);
+  color:var(--text2);font-family:'Source Sans 3',sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .13s;
 }
-.files-overlay.show .files-modal{transform:scale(1) translateY(0);}
-.files-modal-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;}
-.files-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;max-height:48vh;}
-.files-list::-webkit-scrollbar{display:none;}
-.file-row{
-  display:flex;align-items:center;gap:6px;padding:9px 10px;
+.landing-btn-secondary:active{background:var(--surface3);transform:scale(.98);}
+.landing-btn-secondary svg{width:13px;height:13px;}
+.landing-recents-title{
+  font-size:9px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:10px;
+}
+.landing-recents{display:flex;flex-direction:column;gap:6px;}
+.landing-recent-row{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
   border-radius:10px;border:1px solid var(--border2);background:var(--surface2);
+  cursor:pointer;transition:all .12s;
 }
-.file-row.current{border-color:rgba(42,92,132,.35);background:var(--accent-light);}
-.file-row-info{flex:1;min-width:0;}
-.file-row-name{
+.landing-recent-row:active{background:var(--accent-light);}
+.landing-recent-icon{
+  width:28px;height:28px;background:var(--surface3);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  color:var(--muted);
+}
+.landing-recent-icon svg{width:13px;height:13px;}
+.landing-recent-info{flex:1;min-width:0;}
+.landing-recent-name{
   font-family:'Playfair Display',serif;font-size:13px;font-weight:600;
   color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.file-row-meta{font-size:9px;color:var(--muted);margin-top:1px;font-family:'DM Mono',monospace;}
-.frb{
-  height:26px;padding:0 8px;border-radius:6px;border:1px solid var(--border);
-  background:var(--surface);color:var(--text2);cursor:pointer;
-  font-family:'Source Sans 3',sans-serif;font-size:10px;font-weight:600;
-  white-space:nowrap;flex-shrink:0;transition:all .12s;
+.landing-recent-meta{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:1px;}
+.landing-recent-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.landing-archive-btn{
+  width:26px;height:26px;border-radius:6px;border:1px solid rgba(42,99,72,.25);
+  background:#e6f2ec;color:var(--success);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
 }
-.frb:active{opacity:.7;transform:scale(.95);}
-.frb.open{color:var(--accent);border-color:rgba(42,92,132,.25);background:var(--accent-light);}
-.frb.arc{color:var(--success);border-color:rgba(42,99,72,.2);background:#e6f2ec;}
-.frb.del{color:var(--danger);border-color:rgba(122,42,42,.15);background:var(--danger-light);}
-.files-empty{text-align:center;padding:20px;color:var(--muted);font-size:13px;font-style:italic;}
-.files-modal-btns{display:flex;gap:8px;}
+.landing-archive-btn svg{width:11px;height:11px;}
+.landing-archive-btn:active{opacity:.7;}
+.landing-del-btn{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.landing-del-btn svg{width:11px;height:11px;}
+.landing-del-btn:active{background:var(--danger-light);color:var(--danger);}
+.landing-empty{
+  text-align:center;padding:20px 0;color:var(--muted);font-size:12px;font-style:italic;
+}
 
-/* Save name prompt */
-.save-prompt{
+/* New drawing prompt */
+.new-prompt{
   position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(5px);
-  z-index:500;display:flex;align-items:center;justify-content:center;
+  z-index:600;display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;transition:opacity .2s;
 }
-.save-prompt.show{opacity:1;pointer-events:all;}
-.save-modal{
+.new-prompt.show{opacity:1;pointer-events:all;}
+.new-modal{
   background:var(--surface);border:1px solid var(--border);border-radius:16px;
-  padding:22px;width:min(340px,88vw);box-shadow:var(--shadow-lg);
+  padding:24px;width:min(360px,88vw);box-shadow:var(--shadow-lg);
   transform:scale(.95) translateY(8px);transition:transform .2s;
 }
-.save-prompt.show .save-modal{transform:scale(1) translateY(0);}
-.save-modal h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:14px;}
-.save-inp{
+.new-prompt.show .new-modal{transform:scale(1) translateY(0);}
+.new-modal h3{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:16px;}
+.new-inp{
   font-family:'Source Sans 3',sans-serif;font-size:15px;
   width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;
-  background:var(--surface2);color:var(--text);outline:none;margin-bottom:14px;
+  background:var(--surface2);color:var(--text);outline:none;margin-bottom:16px;
   touch-action:auto;user-select:text;-webkit-user-select:text;
 }
-.save-inp:focus{border-color:var(--accent);}
+.new-inp:focus{border-color:var(--accent);}
+
+/* Close dialog */
+.close-dialog{
+  position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(5px);
+  z-index:600;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.close-dialog.show{opacity:1;pointer-events:all;}
+.close-dialog-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:18px;
+  padding:26px;width:min(380px,88vw);box-shadow:var(--shadow-lg);
+  transform:scale(.95) translateY(8px);transition:transform .2s;
+}
+.close-dialog.show .close-dialog-box{transform:scale(1) translateY(0);}
+.close-dialog-box h3{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:10px;}
+.close-dialog-box p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:20px;}
+.close-dialog-btns{display:flex;gap:8px;}
 
 /* Label editor inside area naming popup */
 .chip-editor{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);}
@@ -512,8 +541,64 @@ header{
 </head>
 <body>
 
+<!-- LANDING PAGE -->
+<div id="landing">
+  <div class="landing-card">
+    <div class="landing-suite">FieldSuite</div>
+    <div class="landing-brand">
+      <div class="landing-logo-mark">
+        <svg viewBox="0 0 14 14" fill="none">
+          <rect x="1" y="1" width="5" height="5" stroke="white" stroke-width="1.2"/>
+          <rect x="8" y="1" width="5" height="5" stroke="white" stroke-width="1.2" opacity=".5"/>
+          <rect x="1" y="8" width="5" height="5" stroke="white" stroke-width="1.2" opacity=".5"/>
+          <rect x="8" y="8" width="5" height="5" fill="white" opacity=".2" stroke="white" stroke-width="1.2"/>
+        </svg>
+      </div>
+      <div class="landing-title">Field<em>Sketch</em></div>
+    </div>
+    <div class="landing-actions">
+      <button class="landing-btn-primary" onclick="showNewPrompt()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v10M2 7h10"/></svg>
+        New Drawing
+      </button>
+      <button class="landing-btn-secondary" onclick="landingRetrieveArchive()">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10v7.5H2z"/><path d="M1 2.5h12v1.5H1z"/><path d="M5.5 7h3"/></svg>
+        Open Archive
+      </button>
+    </div>
+    <div class="landing-recents-title">Recent Drawings</div>
+    <div class="landing-recents" id="landingRecents"></div>
+  </div>
+</div>
+<input type="file" id="archiveFileInput" accept=".fsk" style="display:none" onchange="loadArchiveFile(event)">
+
+<!-- New Drawing prompt -->
+<div class="new-prompt" id="newPrompt">
+  <div class="new-modal">
+    <h3>New Drawing</h3>
+    <input type="text" class="new-inp" id="newNameInp" placeholder="Drawing name…">
+    <div class="modal-btns">
+      <button class="mbtn mbtn-ghost" onclick="hideNewPrompt()">Cancel</button>
+      <button class="mbtn mbtn-accent" onclick="confirmNewDrawing()">Begin</button>
+    </div>
+  </div>
+</div>
+
+<!-- Close dialog -->
+<div class="close-dialog" id="closeDialog">
+  <div class="close-dialog-box">
+    <h3>Close Drawing</h3>
+    <p>Your drawing is continuously saved to this device's local storage and will appear in Recent Drawings. To create a portable backup file, use <strong>Archive & Close</strong> — this downloads a <strong>.fsk</strong> file you can store or transfer independently of this browser.</p>
+    <div class="close-dialog-btns">
+      <button class="mbtn mbtn-ghost" onclick="hideCloseDialog()">Cancel</button>
+      <button class="mbtn mbtn-ghost" onclick="closeWithoutArchive()">Close</button>
+      <button class="mbtn mbtn-accent" onclick="closeWithArchive()">Archive & Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
-<header>
+<header id="appHeader" style="display:none">
   <div class="logo-block">
     <div class="logo-mark">
       <svg viewBox="0 0 14 14" fill="none">
@@ -526,37 +611,14 @@ header{
     <div class="logo-text">Field<em>Sketch</em></div>
   </div>
 
-  <!-- File management block -->
-  <div class="file-block">
-    <button class="files-btn" onclick="showFilesModal()">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 3.5h4l1.5 2H12v6H2z"/></svg>
-      Manage
-    </button>
-    <button class="files-btn" onclick="archiveDrawing()">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10v7.5H2z"/><path d="M1 2.5h12v1.5H1z"/><path d="M5.5 7h3"/></svg>
-      Archive
-    </button>
-    <button class="files-btn" onclick="newDrawing()">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v10M2 7h10"/></svg>
-      New
-    </button>
-    <button class="save-btn" id="saveBtn" onclick="quickSave()" title="Save">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="10" height="10" rx="1"/><rect x="4.5" y="2" width="5" height="3.5" rx=".5"/><rect x="4" y="7" width="6" height="4" rx=".5"/><path d="M5.5 3h2"/></svg>
-    </button>
-    <div class="fname-display untitled" id="fnameDisplay">Untitled</div>
-  </div>
-
-  <div class="header-stats">
-    <div class="hstat">
-      <div class="hstat-val" id="hSqft">—</div>
-      <div class="hstat-lbl">Total ft²</div>
+  <div class="header-drawing">
+    <span class="header-drawing-name" id="headerDrawingName">Untitled</span>
+    <span class="header-drawing-date" id="headerDrawingDate"></span>
+    <div class="header-divider"></div>
+    <div class="autosave-ind" id="autosaveInd">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg>
+      Auto-save
     </div>
-    <div class="hdiv"></div>
-    <div class="hstat">
-      <div class="hstat-val" id="hPerim">—</div>
-      <div class="hstat-lbl">Perimeter ft</div>
-    </div>
-    <div class="hdiv"></div>
     <div class="close-ind" id="closeInd">
       <span class="ci-lbl">To Close</span>
       <span class="ci-val" id="closeVal">—</span>
@@ -564,16 +626,20 @@ header{
   </div>
 
   <div class="header-right">
+    <button class="hbtn danger" onclick="clearAll()">Clear</button>
     <button class="hbtn" onclick="exportPNG()">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 1.5v8M4.5 7l2.5 2.5L9.5 7M2 11h10"/></svg>
       Export
     </button>
-    <button class="hbtn danger" onclick="clearAll()">Clear</button>
+    <button class="hbtn accent" onclick="showCloseDialog()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 2H3a1 1 0 00-1 1v8a1 1 0 001 1h2M10 10l3-3-3-3M13 7H6"/></svg>
+      Close
+    </button>
   </div>
 </header>
 
 <!-- TOOLBAR -->
-<div class="toolbar">
+<div class="toolbar" id="appToolbar" style="display:none">
   <div class="tool-seg">
     <button class="tbtn active" id="btnDraw" onclick="setMode('draw')">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 12.5l1.8-5L9.5 1.5 12 4 5.5 10.5z"/><path d="M8.5 3l2.5 2.5"/></svg>
@@ -627,7 +693,7 @@ header{
 </div>
 
 <!-- MAIN -->
-<div class="main-area">
+<div class="main-area" id="mainArea" style="display:none">
 
   <!-- CANVAS -->
   <div class="canvas-wrap" id="canvasWrap">
@@ -833,47 +899,6 @@ header{
       <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
       <button class="mbtn mbtn-ghost" onclick="exportPreview()">Preview</button>
       <button class="mbtn mbtn-accent" onclick="exportDownload()">Download</button>
-    </div>
-  </div>
-</div>
-
-<!-- Archive tap-to-dismiss alert -->
-<div class="archive-alert" id="archiveAlert">
-  <div class="archive-alert-box">
-    <h3>Archive Drawing</h3>
-    <p>This will download <strong id="archiveFileName">this drawing</strong> to your device's Downloads folder.<br><br>
-    If a file with this name already exists, a duplicate will be created. Manage duplicate copies in your Files app.</p>
-    <div class="modal-btns">
-      <button class="mbtn mbtn-ghost" onclick="hideArchiveAlert()">Cancel</button>
-      <button class="mbtn mbtn-accent" onclick="confirmArchive()">Download</button>
-    </div>
-  </div>
-</div>
-
-<!-- Manage modal -->
-<div class="files-overlay" id="filesOverlay">
-  <div class="files-modal">
-    <div class="files-modal-title">Manage Drawings</div>
-    <div class="files-list" id="filesList"></div>
-    <div class="files-modal-btns">
-      <button class="mbtn mbtn-ghost" onclick="retrieveArchive()" style="flex:1">
-        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" style="margin-right:4px"><path d="M2 4h10v7.5H2z"/><path d="M1 2.5h12v1.5H1z"/><path d="M5.5 7h3"/></svg>
-        Retrieve Archive
-      </button>
-      <button class="mbtn mbtn-ghost" onclick="hideFilesModal()">Close</button>
-    </div>
-  </div>
-</div>
-<input type="file" id="archiveFileInput" accept=".fsk" style="display:none" onchange="loadArchiveFile(event)">
-
-<!-- Save name prompt -->
-<div class="save-prompt" id="savePrompt">
-  <div class="save-modal">
-    <h3>Save Drawing</h3>
-    <input type="text" class="save-inp" id="saveInp" placeholder="Drawing name…">
-    <div class="modal-btns">
-      <button class="mbtn mbtn-ghost" onclick="hideSavePrompt()">Cancel</button>
-      <button class="mbtn mbtn-accent" onclick="confirmSave()">Save</button>
     </div>
   </div>
 </div>
@@ -1454,8 +1479,8 @@ function updateStats(){
     if(p>maxPerim)maxPerim=p;
     if(areaNames.has(aid))named.push({...areaNames.get(aid),sqft:sq});
   }
-  document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:0}):'—';
-  document.getElementById('hPerim').textContent=maxPerim>0?maxPerim.toFixed(1):'—';
+  document.getElementById('hSqft') && (document.getElementById('hSqft').textContent=total>0?total.toLocaleString('en-US',{maximumFractionDigits:0}):'—');
+  document.getElementById('hPerim') && (document.getElementById('hPerim').textContent=maxPerim>0?maxPerim.toFixed(1):'—');
 
   // To-close readout: use open areaId at cursor
   const openAid=getOpenAidAtCursor();
@@ -2494,57 +2519,33 @@ function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r
 // ═══════════════════════════════════════════════════════
 let currentFileId=null;
 let isDirty=false;
+let currentDrawingName=null;
+let currentDrawingDate=null;
 
+// ── Dirty tracking ───────────────────────────────────
 function markDirty(){
-  if(!isDirty){isDirty=true;updateFileUI();}
-}
-function markClean(){
-  isDirty=false;updateFileUI();
-}
-
-function updateFileUI(){
-  const btn=document.getElementById('saveBtn');
-  const disp=document.getElementById('fnameDisplay');
-  const file=currentFileId?getFile(currentFileId):null;
-  const name=file?file.name:null;
-  if(name){
-    disp.textContent=name;
-    disp.className='fname-display'+(isDirty?' dirty':'');
-  }else{
-    disp.textContent='Untitled';
-    disp.className='fname-display untitled';
+  if(!isDirty){
+    isDirty=true;
+    if(currentFileId){
+      const files=allFiles();
+      const idx=files.findIndex(f=>f.id===currentFileId);
+      if(idx>=0){files[idx].hasUnarchived=true;saveFiles(files);}
+    }
   }
-  btn.className='save-btn'+(isDirty?' dirty':'');
+  updateAutosaveInd();
 }
+function markClean(){isDirty=false;updateAutosaveInd();}
 
-// ── Autosave ─────────────────────────────────────────
-// Writes current drawing to localStorage after every action.
-// Restored silently on page load so refresh is non-destructive on iOS.
-function autoSave(){
-  try{
-    const data={
-      currentFileId,
-      isDirty,
-      ...drawingSnapshot()
-    };
-    localStorage.setItem(LS_AUTOSAVE,JSON.stringify(data));
-  }catch(e){/* storage full or unavailable — fail silently */}
-}
-
-function restoreAutosave(){
-  try{
-    const raw=localStorage.getItem(LS_AUTOSAVE);
-    if(!raw)return false;
-    const data=JSON.parse(raw);
-    if(data.cleared)return false;
-    if(!data.verts||!data.edges)return false;
-    if(!data.edges.length)return false;
-    // Set file identity BEFORE restoreDrawingData so autoSave() inside it captures them
-    if(data.currentFileId)currentFileId=data.currentFileId;
-    isDirty=data.isDirty===true;
-    restoreDrawingData(data);
-    return true;
-  }catch{return false;}
+function updateAutosaveInd(){
+  const ind=document.getElementById('autosaveInd');
+  if(!ind)return;
+  if(isDirty){
+    ind.className='autosave-ind saved';
+    ind.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Saved';
+  }else{
+    ind.className='autosave-ind';
+    ind.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Auto-save';
+  }
 }
 
 // ── localStorage helpers ─────────────────────────────
@@ -2553,24 +2554,19 @@ function saveFiles(files){localStorage.setItem(LS_KEY,JSON.stringify(files));}
 function getFile(id){return allFiles().find(f=>f.id===id)||null;}
 
 function drawingSnapshot(){
-  return{
-    verts:[...verts.entries()],
-    edges:[...edges.entries()],
-    areaNames:[...areaNames.entries()],
-    nVid,nEid,nAid
-  };
+  return{verts:[...verts.entries()],edges:[...edges.entries()],areaNames:[...areaNames.entries()],nVid,nEid,nAid};
 }
 
 function saveDrawingData(id,name){
   const files=allFiles();
-  const data={id,name,savedAt:Date.now(),...drawingSnapshot()};
+  const data={id,name,savedAt:Date.now(),...drawingSnapshot(),hasUnarchived:isDirty};
   const idx=files.findIndex(f=>f.id===id);
   if(idx>=0)files[idx]=data;else files.unshift(data);
+  if(files.length>20)files.splice(20);
   saveFiles(files);
 }
 
 function restoreDrawingData(data){
-  // JSON parse turns integer Map keys into strings — coerce back to int
   verts=new Map(data.verts.map(([k,v])=>[+k,v]));
   edges=new Map(data.edges.map(([k,e])=>[+k,e]));
   areaNames=new Map(data.areaNames.map(([k,v])=>[+k,v]));
@@ -2581,67 +2577,208 @@ function restoreDrawingData(data){
   updateLenDisp();updateUrBtns();
   setMode('draw');fitScreen();
   redraw();updateStats();updateCloseBtn();
-  // Always write autosave when a file is opened so refresh restores the correct drawing
   autoSave();
 }
 
-// ── Save ─────────────────────────────────────────────
-function quickSave(){
-  if(!isDirty)return;
-  if(!edges.size){alert('Nothing to save — draw at least one wall first.');return;}
-  if(currentFileId&&getFile(currentFileId)){
-    saveDrawingData(currentFileId,getFile(currentFileId).name);
-    markClean();
-  }else{
-    showSavePrompt();
+// ── Autosave ─────────────────────────────────────────
+function autoSave(){
+  try{
+    const data={currentFileId,isDirty,currentDrawingName,currentDrawingDate,...drawingSnapshot()};
+    localStorage.setItem(LS_AUTOSAVE,JSON.stringify(data));
+  }catch(e){}
+}
+
+function restoreAutosave(){
+  try{
+    const raw=localStorage.getItem(LS_AUTOSAVE);
+    if(!raw)return false;
+    const data=JSON.parse(raw);
+    if(data.cleared)return false;
+    if(!data.verts||!data.edges)return false;
+    if(!data.edges.length)return false;
+    if(data.currentFileId)currentFileId=data.currentFileId;
+    if(data.currentDrawingName)currentDrawingName=data.currentDrawingName;
+    if(data.currentDrawingDate)currentDrawingDate=data.currentDrawingDate;
+    isDirty=data.isDirty===true;
+    restoreDrawingData(data);
+    return true;
+  }catch{return false;}
+}
+
+// ── Landing page ─────────────────────────────────────
+function showLanding(){
+  document.getElementById('landing').classList.remove('hidden');
+  document.getElementById('appHeader').style.display='none';
+  document.getElementById('appToolbar').style.display='none';
+  document.getElementById('mainArea').style.display='none';
+  renderLandingRecents();
+}
+
+function hideLanding(){
+  document.getElementById('landing').classList.add('hidden');
+  document.getElementById('appHeader').style.display='';
+  document.getElementById('appToolbar').style.display='';
+  document.getElementById('mainArea').style.display='';
+}
+
+function renderLandingRecents(){
+  const files=allFiles().slice(0,5);
+  const el=document.getElementById('landingRecents');
+  if(!files.length){el.innerHTML='<div class="landing-empty">No saved drawings yet.</div>';return;}
+  el.innerHTML=files.map(f=>{
+    const d=new Date(f.savedAt);
+    const meta=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const archBtn=f.hasUnarchived
+      ?`<button class="landing-archive-btn" onclick="event.stopPropagation();landingArchiveFile('${f.id}')" title="Archive">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10v7.5H2z"/><path d="M1 2.5h12v1.5H1z"/><path d="M5.5 7h3"/></svg>
+        </button>`:'' ;
+    return`<div class="landing-recent-row" onclick="openRecentFile('${f.id}')">
+      <div class="landing-recent-icon">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="1" y="1" width="5" height="5"/><rect x="8" y="1" width="5" height="5" opacity=".5"/>
+          <rect x="1" y="8" width="5" height="5" opacity=".5"/><rect x="8" y="8" width="5" height="5" opacity=".3"/>
+        </svg>
+      </div>
+      <div class="landing-recent-info">
+        <div class="landing-recent-name">${f.name}</div>
+        <div class="landing-recent-meta">${meta}</div>
+      </div>
+      <div class="landing-recent-actions">
+        ${archBtn}
+        <button class="landing-del-btn" onclick="event.stopPropagation();deleteRecentFile('${f.id}')" title="Delete">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openRecentFile(id){
+  const file=getFile(id);if(!file)return;
+  currentFileId=id;
+  currentDrawingName=file.name;
+  currentDrawingDate=file.savedAt;
+  isDirty=false;
+  hideLanding();
+  updateHeaderDrawing();
+  restoreDrawingData(file);
+  markClean();
+}
+
+function deleteRecentFile(id){
+  if(!confirm('Delete this drawing?'))return;
+  const files=allFiles().filter(f=>f.id!==id);
+  saveFiles(files);
+  if(id===currentFileId)localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
+  renderLandingRecents();
+}
+
+function landingArchiveFile(id){
+  const file=getFile(id);if(!file)return;
+  doArchive(file.name,file);
+  const files=allFiles();
+  const idx=files.findIndex(f=>f.id===id);
+  if(idx>=0){files[idx].hasUnarchived=false;saveFiles(files);}
+  renderLandingRecents();
+}
+
+function landingRetrieveArchive(){
+  document.getElementById('archiveFileInput').click();
+}
+
+// ── New Drawing ───────────────────────────────────────
+function showNewPrompt(){
+  document.getElementById('newNameInp').value='';
+  document.getElementById('newPrompt').classList.add('show');
+  setTimeout(()=>document.getElementById('newNameInp').focus(),200);
+}
+function hideNewPrompt(){document.getElementById('newPrompt').classList.remove('show');}
+function confirmNewDrawing(){
+  const name=document.getElementById('newNameInp').value.trim();
+  if(!name)return;
+  hideNewPrompt();
+  verts.clear();edges.clear();areaNames.clear();
+  nVid=1;nEid=1;nAid=1;curPlaced=false;
+  clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
+  undoStack=[];redoStack=[];
+  currentFileId='fs_'+Date.now();
+  currentDrawingName=name;
+  currentDrawingDate=Date.now();
+  isDirty=false;
+  saveDrawingData(currentFileId,name);
+  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
+  hideLanding();
+  updateHeaderDrawing();
+  setMode('draw');fitScreen();
+  redraw();updateStats();updateCloseBtn();
+  updateLenDisp();updateUrBtns();
+  updateAutosaveInd();
+}
+document.getElementById('newNameInp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmNewDrawing();});
+
+// ── Header drawing info ───────────────────────────────
+function updateHeaderDrawing(){
+  const nameEl=document.getElementById('headerDrawingName');
+  const dateEl=document.getElementById('headerDrawingDate');
+  if(nameEl)nameEl.textContent=currentDrawingName||'Untitled';
+  if(dateEl&&currentDrawingDate){
+    const d=new Date(currentDrawingDate);
+    dateEl.textContent='· '+d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   }
 }
 
-function showSavePrompt(){
-  const file=currentFileId?getFile(currentFileId):null;
-  document.getElementById('saveInp').value=file?file.name:'';
-  document.getElementById('savePrompt').classList.add('show');
-  setTimeout(()=>document.getElementById('saveInp').focus(),200);
-}
-function hideSavePrompt(){document.getElementById('savePrompt').classList.remove('show');}
-function confirmSave(){
-  const name=document.getElementById('saveInp').value.trim();
-  if(!name)return;
-  if(!currentFileId)currentFileId='fs_'+Date.now();
-  saveDrawingData(currentFileId,name);
-  markClean();
-  autoSave(); // update autosave with new currentFileId
-  hideSavePrompt();
-  renderFilesList();
-}
-document.getElementById('saveInp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmSave();});
+// ── Close dialog ──────────────────────────────────────
+function showCloseDialog(){document.getElementById('closeDialog').classList.add('show');}
+function hideCloseDialog(){document.getElementById('closeDialog').classList.remove('show');}
 
-// ── Archive (.fsk download) ──────────────────────────
-function archiveDrawing(){
-  const file=currentFileId?getFile(currentFileId):null;
-  const name=file?file.name:'Untitled';
-  document.getElementById('archiveFileName').textContent=name+'.fsk';
-  document.getElementById('archiveAlert').classList.add('show');
+function closeWithoutArchive(){
+  hideCloseDialog();
+  if(currentFileId)saveDrawingData(currentFileId,currentDrawingName||'Untitled');
+  verts.clear();edges.clear();areaNames.clear();
+  nVid=1;nEid=1;nAid=1;curPlaced=false;
+  clearProv();undoStack=[];redoStack=[];
+  currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
+  isDirty=false;
+  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
+  showLanding();
 }
-function hideArchiveAlert(){document.getElementById('archiveAlert').classList.remove('show');}
-function confirmArchive(){
-  hideArchiveAlert();
-  const file=currentFileId?getFile(currentFileId):null;
-  const name=file?file.name:'Untitled';
-  const data=JSON.stringify({name,...drawingSnapshot()},null,2);
-  const blob=new Blob([data],{type:'application/octet-stream'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=name+'.fsk';
-  document.body.appendChild(a);a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+
+function closeWithArchive(){
+  hideCloseDialog();
+  if(currentFileId){
+    saveDrawingData(currentFileId,currentDrawingName||'Untitled');
+    const files=allFiles();
+    const idx=files.findIndex(f=>f.id===currentFileId);
+    if(idx>=0){files[idx].hasUnarchived=false;saveFiles(files);}
+  }
+  doArchive(currentDrawingName||'Untitled',drawingSnapshot());
+  verts.clear();edges.clear();areaNames.clear();
+  nVid=1;nEid=1;nAid=1;curPlaced=false;
+  clearProv();undoStack=[];redoStack=[];
+  currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
+  isDirty=false;
+  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
+  showLanding();
+}
+
+// ── Archive via Web Share API ─────────────────────────
+function doArchive(name,data){
+  const json=JSON.stringify({name,verts:data.verts||[...verts.entries()],edges:data.edges||[...edges.entries()],areaNames:data.areaNames||[...areaNames.entries()],nVid:data.nVid||nVid,nEid:data.nEid||nEid,nAid:data.nAid||nAid},null,2);
+  const blob=new Blob([json],{type:'application/octet-stream'});
+  const file=new File([blob],name+'.fsk',{type:'application/octet-stream'});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:name+'.fsk'}).catch(()=>{});
+  }else{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=name+'.fsk';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
 }
 
 // ── Retrieve Archive ─────────────────────────────────
-function retrieveArchive(){
-  document.getElementById('archiveFileInput').click();
-}
 function loadArchiveFile(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -2649,115 +2786,22 @@ function loadArchiveFile(e){
   reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
-      if(!data.verts||!data.edges)return alert('Invalid archive file.');
-      if(isDirty&&!confirm('Discard unsaved changes and open archive?'))return;
+      if(!data.verts||!data.edges)throw new Error('Invalid');
+      const id='fs_'+Date.now();
       const name=data.name||file.name.replace('.fsk','');
-      // Avoid duplicate — reuse existing entry with same name if present
-      const files=allFiles();
-      let existing=files.find(f=>f.name===name);
-      const id=existing?existing.id:'fs_'+Date.now();
-      const record={id,name,savedAt:Date.now(),...data};
-      const idx=files.findIndex(f=>f.id===id);
-      if(idx>=0)files[idx]=record;else files.unshift(record);
-      saveFiles(files);
       currentFileId=id;
+      currentDrawingName=name;
+      currentDrawingDate=Date.now();
+      isDirty=false;
+      saveDrawingData(id,name);
+      hideLanding();
+      updateHeaderDrawing();
       restoreDrawingData(data);
       markClean();
-      hideFilesModal();
     }catch{alert('Could not read archive file.');}
   };
   reader.readAsText(file);
   e.target.value='';
-}
-
-// ── Manage modal ─────────────────────────────────────
-function showFilesModal(){renderFilesList();document.getElementById('filesOverlay').classList.add('show');}
-function hideFilesModal(){document.getElementById('filesOverlay').classList.remove('show');}
-
-function renderFilesList(){
-  const files=allFiles();
-  const list=document.getElementById('filesList');
-  if(!files.length){list.innerHTML='<div class="files-empty">No saved drawings yet.</div>';return;}
-  list.innerHTML=files.map(f=>{
-    const d=new Date(f.savedAt);
-    const meta=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    const cur=f.id===currentFileId?' current':'';
-    return`<div class="file-row${cur}">
-      <div class="file-row-info">
-        <div style="display:flex;align-items:center;gap:5px">
-          <button onclick="renameFile('${f.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0;display:flex;flex-shrink:0">
-            <svg width="11" height="11" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
-          </button>
-          <div class="file-row-name">${f.name}</div>
-        </div>
-        <div class="file-row-meta">${meta}</div>
-      </div>
-      <button class="frb open" onclick="openFile('${f.id}')">Open</button>
-      <button class="frb arc" onclick="archiveFile('${f.id}')">Archive</button>
-      <button class="frb del" onclick="deleteFile('${f.id}')">Delete</button>
-    </div>`;
-  }).join('');
-}
-
-function renameFile(id){
-  const file=getFile(id);if(!file)return;
-  const newName=prompt('Rename "'+file.name+'" to:\n(Archive separately to update your saved file)',file.name);
-  if(!newName||!newName.trim()||newName.trim()===file.name)return;
-  const files=allFiles();
-  const idx=files.findIndex(f=>f.id===id);
-  if(idx<0)return;
-  files[idx].name=newName.trim();
-  saveFiles(files);
-  // Update header if this is the current file
-  if(id===currentFileId){autoSave();updateFileUI();}
-  renderFilesList();
-}
-
-function openFile(id){
-  if(isDirty&&!confirm('Discard unsaved changes and open?'))return;
-  const file=getFile(id);if(!file)return;
-  currentFileId=id;
-  restoreDrawingData(file);
-  markClean();
-  hideFilesModal();
-}
-
-function archiveFile(id){
-  const file=getFile(id);if(!file)return;
-  const data=JSON.stringify({name:file.name,verts:file.verts,edges:file.edges,areaNames:file.areaNames,nVid:file.nVid,nEid:file.nEid,nAid:file.nAid},null,2);
-  const blob=new Blob([data],{type:'application/octet-stream'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download=file.name+'.fsk';
-  document.body.appendChild(a);a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
-}
-
-function deleteFile(id){
-  if(!confirm('Delete this drawing?'))return;
-  const files=allFiles().filter(f=>f.id!==id);
-  saveFiles(files);
-  if(currentFileId===id){currentFileId=null;isDirty=false;updateFileUI();}
-  renderFilesList();
-}
-
-function newDrawing(){
-  if(isDirty){
-    if(!confirm('You have unsaved changes. Discard and start a new drawing?'))return;
-  }else{
-    if(!confirm('Start a new drawing? Your current drawing will remain saved.'))return;
-  }
-  verts.clear();edges.clear();areaNames.clear();
-  nVid=1;nEid=1;nAid=1;curPlaced=false;
-  clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
-  undoStack=[];redoStack=[];
-  currentFileId=null;
-  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
-  markClean();
-  updateLenDisp();updateUrBtns();
-  setMode('draw');
-  redraw();updateStats();updateCloseBtn();
 }
 
 // ── Preset label management ──────────────────────────
@@ -2776,10 +2820,7 @@ function toggleLabelEditor(){
 
 function renderChipEditor(){
   document.getElementById('chipEditorList').innerHTML=PRESETS.map((p,i)=>
-    `<div class="mchip-wrap">
-      <div class="mchip">${p}</div>
-      <button class="mchip-x" onclick="removePreset(${i})">×</button>
-    </div>`
+    `<div class="mchip-wrap"><div class="mchip">${p}</div><button class="mchip-x" onclick="removePreset(${i})">×</button></div>`
   ).join('');
 }
 
@@ -2787,37 +2828,35 @@ function addPreset(){
   const inp=document.getElementById('chipEditInp');
   const val=inp.value.trim();
   if(!val||PRESETS.includes(val))return;
-  PRESETS.push(val);
-  savePresets();
-  inp.value='';
+  PRESETS.push(val);savePresets();inp.value='';
   renderChipEditor();
-  // Refresh main chips
   document.getElementById('areaChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="chipSel(this,'${p}')">${p}</div>`).join('');
 }
 
 function removePreset(i){
-  PRESETS.splice(i,1);
-  savePresets();
+  PRESETS.splice(i,1);savePresets();
   renderChipEditor();
   document.getElementById('areaChips').innerHTML=PRESETS.map(p=>`<div class="mchip" onclick="chipSel(this,'${p}')">${p}</div>`).join('');
 }
 
-// ── Dirty tracking ───────────────────────────────────
-
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
-// Attempt to restore from autosave (handles iOS refresh)
-if(!restoreAutosave()){
+updateLenDisp();
+updateUrBtns();
+window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
+
+if(restoreAutosave()){
+  hideLanding();
+  updateHeaderDrawing();
+  updateAutosaveInd();
+  updateStats();
+  updateCloseBtn();
+}else{
+  showLanding();
   setMode('draw');
 }
-updateLenDisp();
-updateStats();
-updateUrBtns();
-updateFileUI();
-fitScreen();
-// Always warn before leaving — refresh and tab close are the nuke button
-window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 </script>
+
 </body>
 </html>
