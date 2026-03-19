@@ -272,6 +272,22 @@ header{
 
 
 
+/* Export modal */
+.archive-alert{
+  position:fixed;inset:0;background:rgba(28,26,22,.5);backdrop-filter:blur(4px);
+  z-index:700;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.archive-alert.show{opacity:1;pointer-events:all;}
+.archive-alert-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:22px;width:min(360px,88vw);box-shadow:var(--shadow-lg);
+  transform:scale(.95) translateY(8px);transition:transform .2s;
+}
+.archive-alert.show .archive-alert-box{transform:scale(1) translateY(0);}
+.archive-alert-box h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:10px;}
+.archive-alert-box p{font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:16px;}
+
 .toolbar{
   height:var(--toolbar-h);background:var(--surface);border-bottom:1px solid var(--border);
   display:flex;align-items:center;gap:4px;padding:0 10px;flex-shrink:0;z-index:100;
@@ -2462,8 +2478,7 @@ function _renderExportCanvas(cb){
   },150);
 }
 function _exportName(){
-  const file=currentFileId?getFile(currentFileId):null;
-  return(file?file.name:'FieldSketch').replace(/[^a-z0-9_\-\s]/gi,'_');
+  return(currentDrawingName||'FieldSketch').replace(/[^a-z0-9_\-\s]/gi,'_');
 }
 function exportPreview(){
   hideExportModal();
@@ -2532,20 +2547,26 @@ function markDirty(){
       if(idx>=0){files[idx].hasUnarchived=true;saveFiles(files);}
     }
   }
-  updateAutosaveInd();
+  // Flash "Saved" then revert to "Auto-save"
+  flashAutosaveInd();
 }
 function markClean(){isDirty=false;updateAutosaveInd();}
+
+let _autosaveFlashTimer=null;
+function flashAutosaveInd(){
+  const ind=document.getElementById('autosaveInd');
+  if(!ind)return;
+  ind.className='autosave-ind saved';
+  ind.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Saved';
+  clearTimeout(_autosaveFlashTimer);
+  _autosaveFlashTimer=setTimeout(()=>updateAutosaveInd(),2000);
+}
 
 function updateAutosaveInd(){
   const ind=document.getElementById('autosaveInd');
   if(!ind)return;
-  if(isDirty){
-    ind.className='autosave-ind saved';
-    ind.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Saved';
-  }else{
-    ind.className='autosave-ind';
-    ind.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Auto-save';
-  }
+  ind.className='autosave-ind';
+  ind.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Auto-save';
 }
 
 // ── localStorage helpers ─────────────────────────────
@@ -2690,7 +2711,7 @@ function landingRetrieveArchive(){
 function showNewPrompt(){
   document.getElementById('newNameInp').value='';
   document.getElementById('newPrompt').classList.add('show');
-  setTimeout(()=>document.getElementById('newNameInp').focus(),200);
+  document.getElementById('newNameInp').focus();
 }
 function hideNewPrompt(){document.getElementById('newPrompt').classList.remove('show');}
 function confirmNewDrawing(){
@@ -2767,7 +2788,7 @@ function doArchive(name,data){
   const blob=new Blob([json],{type:'application/octet-stream'});
   const file=new File([blob],name+'.fsk',{type:'application/octet-stream'});
   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file],title:name+'.fsk'}).catch(()=>{});
+    navigator.share({files:[file]}).catch(()=>{});
   }else{
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
