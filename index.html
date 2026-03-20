@@ -1870,6 +1870,7 @@ function setMode(m){
   }
   updateCloseBtn();
   if(m==='select')updateSelPanel();
+  updatePasteBtn();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2250,7 +2251,7 @@ function selDeleteShape(){
 let clipboard=null; // geometry snapshot of copied shape
 
 function updatePasteBtn(){
-  const show=clipboard!==null;
+  const show=clipboard!==null&&mode==='select';
   document.getElementById('tbPasteBtn').style.display=show?'':'none';
   document.getElementById('pasteActSep').style.display=show?'':'none';
 }
@@ -2356,7 +2357,7 @@ function confirmPaste(){
   selAid=newAid;
 
   updateSelPanel();
-  redraw();updateStats();autoSave();
+  redraw();fitScreen();updateStats();autoSave();
 }
 
 document.getElementById('pasteNameInp').addEventListener('keydown',e=>{
