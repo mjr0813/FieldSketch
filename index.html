@@ -910,11 +910,10 @@ header{
 <div class="archive-alert" id="exportModal">
   <div class="archive-alert-box">
     <h3>Export Drawing</h3>
-    <p>Preview opens the image in a new tab where you can use the Share button.<br>Download saves the image directly to your Files app.</p>
+    <p>This opens a PNG preview in a new tab. From there, tap the Share button in Safari to email, save to Photos, or print.</p>
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
-      <button class="mbtn mbtn-ghost" onclick="exportPreview()">Preview</button>
-      <button class="mbtn mbtn-accent" onclick="exportDownload()">Download</button>
+      <button class="mbtn mbtn-accent" onclick="exportPreview()">Preview</button>
     </div>
   </div>
 </div>
@@ -2485,11 +2484,12 @@ function exportPreview(){
   _renderExportCanvas(ec=>{
     const dataUrl=ec.toDataURL('image/png');
     const name=_exportName();
-    const win=window.open('','_blank');
-    if(win){
-      win.document.write(`<!DOCTYPE html><html><head><title>${name}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh;}img{max-width:100%;height:auto;}@media print{body{background:white;display:block;}img{width:100%;height:auto;page-break-inside:avoid;}}</style></head><body><img src="${dataUrl}" alt="${name}"></body></html>`);
-      win.document.close();
-    }
+    const html=`<!DOCTYPE html><html><head><title>${name}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh;}img{max-width:100%;height:auto;}@media print{body{background:white;display:block;}img{width:100%;height:auto;page-break-inside:avoid;}}</style></head><body><img src="${dataUrl}" alt="${name}"></body></html>`;
+    const blob=new Blob([html],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+    // Revoke after a generous delay to ensure the tab has loaded
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
   });
 }
 function exportDownload(){
@@ -2711,7 +2711,7 @@ function landingRetrieveArchive(){
 function showNewPrompt(){
   document.getElementById('newNameInp').value='';
   document.getElementById('newPrompt').classList.add('show');
-  document.getElementById('newNameInp').focus();
+  setTimeout(()=>document.getElementById('newNameInp').focus(),200);
 }
 function hideNewPrompt(){document.getElementById('newPrompt').classList.remove('show');}
 function confirmNewDrawing(){
