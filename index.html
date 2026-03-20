@@ -288,6 +288,40 @@ header{
 .archive-alert-box h3{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:10px;}
 .archive-alert-box p{font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:16px;}
 
+/* Page controls */
+.page-controls{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.page-nav{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.page-nav svg{width:10px;height:10px;}
+.page-nav:active{background:var(--surface3);}
+.page-nav:disabled{opacity:.3;cursor:default;}
+.page-counter{
+  font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);
+  padding:0 6px;white-space:nowrap;
+}
+.page-add{
+  font-family:'Source Sans 3',sans-serif;font-size:11px;font-weight:600;
+  padding:4px 9px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;gap:3px;transition:all .12s;white-space:nowrap;
+}
+.page-add svg{width:10px;height:10px;}
+.page-add:active{background:var(--surface3);}
+.page-del{
+  width:26px;height:26px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.page-del svg{width:10px;height:10px;}
+.page-del:active{background:var(--danger-light);color:var(--danger);}
+.page-del:disabled{opacity:.3;cursor:default;}
+/* Export B&W toggle */
+.export-bw-row{display:flex;align-items:center;gap:8px;}
+.export-bw-row label{font-size:11px;color:var(--text2);font-family:'Source Sans 3',sans-serif;cursor:pointer;}
+
 .toolbar{
   height:var(--toolbar-h);background:var(--surface);border-bottom:1px solid var(--border);
   display:flex;align-items:center;gap:4px;padding:0 10px;flex-shrink:0;z-index:100;
@@ -707,6 +741,24 @@ header{
 
   <div class="spacer"></div>
 
+  <div class="page-controls">
+    <button class="page-nav" id="pagePrev" onclick="prevPage()" title="Previous page">
+      <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 5l3 3"/></svg>
+    </button>
+    <span class="page-counter" id="pageCounter">1 / 1</span>
+    <button class="page-nav" id="pageNext" onclick="nextPage()" title="Next page">
+      <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 2l3 3-3 3"/></svg>
+    </button>
+    <div class="tb-sep"></div>
+    <button class="page-add" onclick="addPage()">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v10M2 7h10"/></svg>
+      Add
+    </button>
+    <button class="page-del" id="pageDel" onclick="deletePage()" title="Delete page">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
+    </button>
+  </div>
+  <div class="tb-sep"></div>
   <button class="hbtn" onclick="fitScreen()">
     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1.5 5V1.5H5M9 1.5h3.5V5M12.5 9v3.5H9M5 12.5H1.5V9"/></svg>
     Fit
@@ -923,6 +975,11 @@ header{
     <div id="exportPreviewWrap" style="flex:1;overflow:hidden;border-radius:8px;border:1px solid var(--border);background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:200px">
       <img id="exportPreviewImg" src="" alt="Preview" style="max-width:100%;max-height:60vh;display:block;">
     </div>
+    <div class="export-bw-row">
+      <input type="checkbox" id="exportBW" onchange="refreshExportPreview()">
+      <label for="exportBW">Black &amp; white (laser print)</label>
+      <span id="exportPageCount" style="margin-left:auto;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace"></span>
+    </div>
     <p style="font-size:11px;color:var(--muted);line-height:1.5">Tap <strong>Export</strong> to send via email, save to Photos, or print.</p>
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
@@ -977,6 +1034,11 @@ const DIR_DEG = {N:90,NE:45,E:0,SE:315,S:270,SW:225,W:180,NW:135};
 // ═══════════════════════════════════════════════════════
 let verts=new Map(),edges=new Map(),areaNames=new Map();
 let nVid=1,nEid=1,nAid=1;
+
+// ── Pages ─────────────────────────────────────────────
+// Each page is an independent drawing snapshot
+let pages=[null]; // null = current page (live data), others are snapshots
+let currentPage=0; // 0-based index
 
 function addVert(x,y){
   for(const[id,v]of verts)if(Math.hypot(v.x-x,v.y-y)<0.15)return id;
@@ -2475,16 +2537,20 @@ document.getElementById('areaNameInp').addEventListener('keydown',e=>{if(e.key==
 // ═══════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════
-let _exportBlob=null;
+let _exportBlobs=[]; // one blob per page
 
 function exportPNG(){
-  _exportBlob=null;
+  _exportBlobs=[];
   document.getElementById('exportPreviewImg').src='';
   document.getElementById('exportModal').classList.add('show');
   document.getElementById('exportShareBtn').disabled=true;
-  _renderExportCanvas(ec=>{
+  const bw=document.getElementById('exportBW').checked;
+  const total=pages.length;
+  document.getElementById('exportPageCount').textContent=
+    total>1?`${total} pages`:'1 page';
+  // Render current page as preview
+  _renderPageCanvas(currentPage,bw,ec=>{
     ec.toBlob(blob=>{
-      _exportBlob=blob;
       const url=URL.createObjectURL(blob);
       const img=document.getElementById('exportPreviewImg');
       img.onload=()=>URL.revokeObjectURL(url);
@@ -2493,27 +2559,140 @@ function exportPNG(){
     },'image/png');
   });
 }
+
+function refreshExportPreview(){
+  // Called when B&W checkbox changes
+  document.getElementById('exportPreviewImg').src='';
+  document.getElementById('exportShareBtn').disabled=true;
+  const bw=document.getElementById('exportBW').checked;
+  _renderPageCanvas(currentPage,bw,ec=>{
+    ec.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const img=document.getElementById('exportPreviewImg');
+      img.onload=()=>URL.revokeObjectURL(url);
+      img.src=url;
+      document.getElementById('exportShareBtn').disabled=false;
+    },'image/png');
+  });
+}
+
 function hideExportModal(){
   document.getElementById('exportModal').classList.remove('show');
-  _exportBlob=null;
+  _exportBlobs=[];
 }
+
 function exportShare(){
-  if(!_exportBlob)return;
-  const name=_exportName()+'.png';
-  const file=new File([_exportBlob],name,{type:'image/png'});
-  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-    navigator.share({files:[file]}).catch(()=>{});
-  }else{
-    // Fallback for non-iOS: direct download
-    const url=URL.createObjectURL(_exportBlob);
-    const a=document.createElement('a');
-    a.href=url;a.download=name;
-    document.body.appendChild(a);a.click();
-    document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  document.getElementById('exportShareBtn').disabled=true;
+  const bw=document.getElementById('exportBW').checked;
+  const name=_exportName();
+  const allSnaps=allPageSnapshots();
+  const total=allSnaps.length;
+  const blobs=[];
+  let rendered=0;
+
+  function renderNext(idx){
+    if(idx>=total){
+      // All rendered — share
+      const files=blobs.map((b,i)=>{
+        const suffix=total>1?`_p${i+1}`:'';
+        return new File([b],`${name}${suffix}.png`,{type:'image/png'});
+      });
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files})){
+        navigator.share({files}).catch(()=>{});
+      }else{
+        // Fallback: download each
+        files.forEach((f,i)=>{
+          const url=URL.createObjectURL(f);
+          const a=document.createElement('a');
+          a.href=url;a.download=f.name;
+          document.body.appendChild(a);a.click();
+          document.body.removeChild(a);
+          setTimeout(()=>URL.revokeObjectURL(url),(i+1)*500);
+        });
+      }
+      hideExportModal();
+      return;
+    }
+    _renderSnapshotCanvas(allSnaps[idx],bw,ec=>{
+      ec.toBlob(blob=>{
+        blobs.push(blob);
+        renderNext(idx+1);
+      },'image/png');
+    });
   }
-  hideExportModal();
+  renderNext(0);
 }
+
+// Render a specific page index (switches state temporarily)
+function _renderPageCanvas(pageIdx,bw,cb){
+  // Save current page, switch to target, render, switch back
+  const savedPageIdx=currentPage;
+  const savedSnap=pageSnapshot();
+  saveCurrent();
+
+  function doRender(){
+    fitScreen();
+    setTimeout(()=>{
+      const ec=document.createElement('canvas');
+      ec.width=canvas.width;ec.height=canvas.height;
+      const ectx=ec.getContext('2d');
+      ectx.fillStyle='#f0ede6';ectx.fillRect(0,0,ec.width,ec.height);
+      ectx.drawImage(canvas,0,0);
+      if(bw)_applyBW(ec);
+      // Restore original page
+      restorePageSnapshot(savedSnap);
+      currentPage=savedPageIdx;
+      pages[savedPageIdx]=null;
+      redraw();updateStats();updatePageUI();
+      cb(ec);
+    },150);
+  }
+
+  if(pageIdx===savedPageIdx){
+    doRender();
+  }else{
+    restorePageSnapshot(pages[pageIdx]);
+    currentPage=pageIdx;
+    redraw();
+    doRender();
+  }
+}
+
+// Render from a saved snapshot without disrupting current state
+function _renderSnapshotCanvas(snap,bw,cb){
+  const savedSnap=pageSnapshot();
+  const savedPageIdx=currentPage;
+  restorePageSnapshot(snap);
+  redraw();
+  setTimeout(()=>{
+    const ec=document.createElement('canvas');
+    ec.width=canvas.width;ec.height=canvas.height;
+    const ectx=ec.getContext('2d');
+    ectx.fillStyle='#f0ede6';ectx.fillRect(0,0,ec.width,ec.height);
+    ectx.drawImage(canvas,0,0);
+    if(bw)_applyBW(ec);
+    restorePageSnapshot(savedSnap);
+    currentPage=savedPageIdx;
+    pages[savedPageIdx]=null;
+    redraw();updateStats();updatePageUI();
+    cb(ec);
+  },150);
+}
+
+// True B&W conversion: grayscale then threshold at 160
+function _applyBW(ec){
+  const ectx=ec.getContext('2d');
+  const id=ectx.getImageData(0,0,ec.width,ec.height);
+  const d=id.data;
+  const threshold=160;
+  for(let i=0;i<d.length;i+=4){
+    const lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+    const v=lum<threshold?0:255;
+    d[i]=d[i+1]=d[i+2]=v;
+  }
+  ectx.putImageData(id,0,0);
+}
+
 function _renderExportCanvas(cb){
   fitScreen();
   setTimeout(()=>{
@@ -2525,6 +2704,7 @@ function _renderExportCanvas(cb){
     cb(ec);
   },150);
 }
+
 function _exportName(){
   return(currentDrawingName||'FieldSketch').replace(/[^a-z0-9_\-\s]/gi,'_');
 }
@@ -2597,7 +2777,14 @@ function saveFiles(files){localStorage.setItem(LS_KEY,JSON.stringify(files));}
 function getFile(id){return allFiles().find(f=>f.id===id)||null;}
 
 function drawingSnapshot(){
-  return{verts:[...verts.entries()],edges:[...edges.entries()],areaNames:[...areaNames.entries()],nVid,nEid,nAid};
+  saveCurrent(); // ensure current page captured
+  return{
+    verts:[...verts.entries()],
+    edges:[...edges.entries()],
+    areaNames:[...areaNames.entries()],
+    nVid,nEid,nAid,
+    pages,currentPage
+  };
 }
 
 function saveDrawingData(id,name){
@@ -2614,19 +2801,137 @@ function restoreDrawingData(data){
   edges=new Map(data.edges.map(([k,e])=>[+k,e]));
   areaNames=new Map(data.areaNames.map(([k,v])=>[+k,v]));
   nVid=data.nVid;nEid=data.nEid;nAid=data.nAid;
+  if(data.pages){pages=data.pages;currentPage=data.currentPage||0;}
   curPlaced=false;clearProv();
   numBuf='';selBuf='';selWallEid=null;selAid=null;
   undoStack=[];redoStack=[];
   updateLenDisp();updateUrBtns();
   setMode('draw');fitScreen();
   redraw();updateStats();updateCloseBtn();
+  updatePageUI();
   autoSave();
 }
 
 // ── Autosave ─────────────────────────────────────────
+// ── Page management ───────────────────────────────────
+function pageSnapshot(){
+  return{
+    verts:[...verts.entries()],
+    edges:[...edges.entries()],
+    areaNames:[...areaNames.entries()],
+    nVid,nEid,nAid,
+    vpX,vpY,vpS
+  };
+}
+
+function restorePageSnapshot(snap){
+  verts=new Map(snap.verts.map(([k,v])=>[+k,v]));
+  edges=new Map(snap.edges.map(([k,e])=>[+k,e]));
+  areaNames=new Map(snap.areaNames.map(([k,v])=>[+k,v]));
+  nVid=snap.nVid;nEid=snap.nEid;nAid=snap.nAid;
+  vpX=snap.vpX;vpY=snap.vpY;vpS=snap.vpS;
+  curPlaced=false;clearProv();
+  numBuf='';selBuf='';selWallEid=null;selAid=null;
+  undoStack=[];redoStack=[];
+  updateLenDisp();updateUrBtns();
+  setMode('draw');
+  redraw();updateStats();updateCloseBtn();
+}
+
+function updatePageUI(){
+  const total=pages.length;
+  document.getElementById('pageCounter').textContent=`${currentPage+1} / ${total}`;
+  document.getElementById('pagePrev').disabled=currentPage===0;
+  document.getElementById('pageNext').disabled=currentPage===total-1;
+  document.getElementById('pageDel').disabled=total===1;
+}
+
+function saveCurrent(){
+  pages[currentPage]=pageSnapshot();
+}
+
+function switchToPage(idx){
+  saveCurrent();
+  currentPage=idx;
+  const snap=pages[currentPage];
+  if(snap){
+    restorePageSnapshot(snap);
+  }else{
+    // Fresh page
+    verts.clear();edges.clear();areaNames.clear();
+    nVid=1;nEid=1;nAid=1;curPlaced=false;
+    clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
+    undoStack=[];redoStack=[];
+    vpX=0;vpY=0;vpS=8;
+    updateLenDisp();updateUrBtns();
+    setMode('draw');fitScreen();
+    redraw();updateStats();updateCloseBtn();
+  }
+  updatePageUI();
+  markDirty();
+}
+
+function prevPage(){if(currentPage>0)switchToPage(currentPage-1);}
+function nextPage(){if(currentPage<pages.length-1)switchToPage(currentPage+1);}
+
+function addPage(){
+  saveCurrent();
+  pages.splice(currentPage+1,0,null);
+  currentPage++;
+  // Fresh canvas
+  verts.clear();edges.clear();areaNames.clear();
+  nVid=1;nEid=1;nAid=1;curPlaced=false;
+  clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
+  undoStack=[];redoStack=[];
+  vpX=0;vpY=0;vpS=8;
+  updateLenDisp();updateUrBtns();
+  setMode('draw');fitScreen();
+  redraw();updateStats();updateCloseBtn();
+  updatePageUI();
+  markDirty();
+}
+
+function deletePage(){
+  if(pages.length===1)return;
+  const hasContent=edges.size>0;
+  if(hasContent&&!confirm('Delete this page and its drawing?'))return;
+  pages.splice(currentPage,1);
+  if(currentPage>=pages.length)currentPage=pages.length-1;
+  const snap=pages[currentPage];
+  if(snap){
+    restorePageSnapshot(snap);
+    pages[currentPage]=null; // make live
+  }else{
+    verts.clear();edges.clear();areaNames.clear();
+    nVid=1;nEid=1;nAid=1;curPlaced=false;
+    clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
+    undoStack=[];redoStack=[];
+    vpX=0;vpY=0;vpS=8;
+    updateLenDisp();updateUrBtns();
+    setMode('draw');fitScreen();
+    redraw();updateStats();updateCloseBtn();
+  }
+  updatePageUI();
+  markDirty();
+}
+
+function resetPages(){
+  pages=[null];
+  currentPage=0;
+  updatePageUI();
+}
+
+function allPageSnapshots(){
+  // Save current page first
+  saveCurrent();
+  return pages.map(p=>p);
+}
+
 function autoSave(){
   try{
-    const data={currentFileId,isDirty,currentDrawingName,currentDrawingDate,...drawingSnapshot()};
+    saveCurrent(); // ensure current page is captured
+    const data={currentFileId,isDirty,currentDrawingName,currentDrawingDate,
+      pages,currentPage,...drawingSnapshot()};
     localStorage.setItem(LS_AUTOSAVE,JSON.stringify(data));
   }catch(e){}
 }
@@ -2638,12 +2943,18 @@ function restoreAutosave(){
     const data=JSON.parse(raw);
     if(data.cleared)return false;
     if(!data.verts||!data.edges)return false;
-    if(!data.edges.length)return false;
+    if(!data.edges.length&&(!data.pages||data.pages.length<=1))return false;
     if(data.currentFileId)currentFileId=data.currentFileId;
     if(data.currentDrawingName)currentDrawingName=data.currentDrawingName;
     if(data.currentDrawingDate)currentDrawingDate=data.currentDrawingDate;
     isDirty=data.isDirty===true;
+    // Restore pages
+    if(data.pages&&data.pages.length>0){
+      pages=data.pages;
+      currentPage=data.currentPage||0;
+    }
     restoreDrawingData(data);
+    updatePageUI();
     return true;
   }catch{return false;}
 }
@@ -2748,6 +3059,7 @@ function confirmNewDrawing(){
   currentDrawingName=name;
   currentDrawingDate=Date.now();
   isDirty=false;
+  resetPages();
   saveDrawingData(currentFileId,name);
   localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
   hideLanding();
@@ -2782,6 +3094,7 @@ function closeWithoutArchive(){
   clearProv();undoStack=[];redoStack=[];
   currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
   isDirty=false;
+  resetPages();
   localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
   showLanding();
 }
@@ -2806,6 +3119,7 @@ function closeWithArchive(){
     clearProv();undoStack=[];redoStack=[];
     currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
     isDirty=false;
+    resetPages();
     localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
     showLanding();
   }
@@ -2917,6 +3231,7 @@ function removePreset(i){
 // ═══════════════════════════════════════════════════════
 updateLenDisp();
 updateUrBtns();
+updatePageUI();
 window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 
 if(restoreAutosave()){
