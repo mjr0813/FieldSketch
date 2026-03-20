@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>FieldSketch</title>
@@ -2888,15 +2885,12 @@ function addPage(){
   currentPage++;
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
+  curX=0;curY=0;
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
   undoStack=[];redoStack=[];
-  vpX=0;vpY=0;vpS=8;
-  curX=0;curY=0;
   updateLenDisp();updateUrBtns();
   setMode('draw');
-  // Defer fitScreen until after canvas has been laid out
-  requestAnimationFrame(()=>{fitScreen();redraw();});
-  updateStats();updateCloseBtn();
+  setTimeout(()=>{fitScreen();redraw();updateStats();updateCloseBtn();},50);
   updatePageUI();
   markDirty();
 }
@@ -3063,6 +3057,7 @@ function confirmNewDrawing(){
   hideNewPrompt();
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
+  curX=0;curY=0;
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
   undoStack=[];redoStack=[];
   currentFileId='fs_'+Date.now();
@@ -3074,10 +3069,10 @@ function confirmNewDrawing(){
   localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
   hideLanding();
   updateHeaderDrawing();
-  setMode('draw');fitScreen();
-  redraw();updateStats();updateCloseBtn();
-  updateLenDisp();updateUrBtns();
-  updateAutosaveInd();
+  setMode('draw');
+  updateLenDisp();updateUrBtns();updateAutosaveInd();
+  // Defer fitScreen until canvas has been laid out after landing hide
+  setTimeout(()=>{fitScreen();redraw();updateStats();updateCloseBtn();},50);
 }
 document.getElementById('newNameInp').addEventListener('keydown',e=>{if(e.key==='Enter')confirmNewDrawing();});
 
