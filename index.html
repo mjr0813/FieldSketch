@@ -725,9 +725,9 @@ header{
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 10.5h10M8 2.5l3 3-6 6H2v-3l6-6z"/></svg>
       Rename
     </button>
-    <button class="tbtn" id="tbDupeBtn" onclick="selDuplicate()">
+    <button class="tbtn" id="tbCopyBtn" onclick="selCopy()">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="3.5" width="7" height="9" rx="1"/><path d="M4.5 3.5V2.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1"/></svg>
-      Duplicate
+      Copy
     </button>
     <button class="tbtn" id="tbDelWallBtn" onclick="selDelete()">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 4h10M5 4V2.5h4V4M5.5 6v5M8.5 6v5M3 4l.5 8h7l.5-8"/></svg>
@@ -738,6 +738,13 @@ header{
       Delete Shape
     </button>
   </div>
+
+  <!-- Paste button — visible whenever clipboard has content, independent of selection -->
+  <div class="tb-sep" id="pasteActSep" style="display:none"></div>
+  <button class="tbtn" id="tbPasteBtn" onclick="showPasteDialog()" style="display:none">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 2.5h4a1 1 0 0 1 1 1V4H4v-.5a1 1 0 0 1 1-1z"/><rect x="2.5" y="4" width="9" height="8" rx="1"/></svg>
+    Paste
+  </button>
 
   <div class="spacer"></div>
 
@@ -2070,7 +2077,7 @@ function updateSelPanel(){
   const sep=document.getElementById('selActSep');
   const grp=document.getElementById('selActGroup');
   const tbRename=document.getElementById('tbRenameBtn');
-  const tbDupe=document.getElementById('tbDupeBtn');
+  const tbCopy=document.getElementById('tbCopyBtn');
   const tbDelWall=document.getElementById('tbDelWallBtn');
   const tbDelShape=document.getElementById('tbDelShapeBtn');
 
@@ -2079,7 +2086,7 @@ function updateSelPanel(){
     nameDisp.textContent='';
     actionLbl.textContent='Enter distance + direction to bump';
     sep.style.display='';grp.style.display='flex';
-    tbRename.style.display='none';tbDupe.style.display='none';
+    tbRename.style.display='none';tbCopy.style.display='none';
     tbDelWall.style.display='';tbDelShape.style.display='none';
   }else if(selAid!==null){
     hint.style.display='none';info.style.display='';
@@ -2087,7 +2094,7 @@ function updateSelPanel(){
     nameDisp.textContent=name;
     actionLbl.textContent='Enter distance + direction to move';
     sep.style.display='';grp.style.display='flex';
-    tbRename.style.display='';tbDupe.style.display='';
+    tbRename.style.display='';tbCopy.style.display='';
     tbDelWall.style.display='none';tbDelShape.style.display='';
   }else{
     hint.style.display='';info.style.display='none';
@@ -2239,18 +2246,37 @@ function selDeleteShape(){
   updateSelPanel();redraw();updateStats();updateCloseBtn();autoSave();
 }
 
-// ── Duplicate / Paste As ─────────────────────────────
-let copyAid=null; // areaId being duplicated
+// ── Copy / Paste ──────────────────────────────────────
+let clipboard=null; // geometry snapshot of copied shape
 
-function selDuplicate(){
+function updatePasteBtn(){
+  const show=clipboard!==null;
+  document.getElementById('tbPasteBtn').style.display=show?'':'none';
+  document.getElementById('pasteActSep').style.display=show?'':'none';
+}
+
+function selCopy(){
   if(selAid===null)return;
-  copyAid=selAid;
-  // Show Paste As modal with chips
+  const srcEdges=[...edges.values()].filter(e=>e.areaId===selAid);
+  const srcVids=new Set(srcEdges.flatMap(e=>[e.a,e.b]));
+  const srcVerts={};
+  for(const vid of srcVids)srcVerts[vid]={...verts.get(vid)};
+  clipboard={edges:srcEdges.map(e=>({...e})),verts:srcVerts};
+  updatePasteBtn();
+  // Brief feedback
+  const btn=document.getElementById('tbCopyBtn');
+  const orig=btn.innerHTML;
+  btn.innerHTML='<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 7l3.5 3.5L12 3.5"/></svg> Copied';
+  setTimeout(()=>{btn.innerHTML=orig;},1200);
+}
+
+function showPasteDialog(){
+  if(!clipboard)return;
   document.getElementById('pasteChips').innerHTML=
     PRESETS.map(p=>`<div class="mchip" onclick="pasteChipSel(this,'${p}')">${p}</div>`).join('');
   document.getElementById('pasteNameInp').value='';
   document.getElementById('pasteModal').classList.add('show');
-  setTimeout(()=>document.getElementById('pasteNameInp').focus(),300);
+  setTimeout(()=>document.getElementById('pasteNameInp').focus(),200);
 }
 
 function pasteChipSel(el,name){
@@ -2262,7 +2288,6 @@ function pasteChipSel(el,name){
 function cancelPaste(){
   document.getElementById('pasteModal').classList.remove('show');
   document.getElementById('pasteChipEditor').classList.remove('open');
-  copyAid=null;
 }
 
 function togglePasteLabelEditor(){
@@ -2300,52 +2325,35 @@ function confirmPaste(){
   const name=document.getElementById('pasteNameInp').value.trim()||'Copy';
   document.getElementById('pasteModal').classList.remove('show');
   document.getElementById('pasteChipEditor').classList.remove('open');
-  if(copyAid===null)return;
+  if(!clipboard)return;
 
-  // Build geometry for the source shape
-  const srcEdges=[...edges.values()].filter(e=>e.areaId===copyAid);
-  const srcVids=new Set(srcEdges.flatMap(e=>[e.a,e.b]));
+  const srcEdges=clipboard.edges;
+  const srcVerts=clipboard.verts;
 
-  // Find bounds of source shape
-  let minY=Infinity,maxY=-Infinity;
-  for(const vid of srcVids){
-    const v=verts.get(vid);
-    if(v.y<minY)minY=v.y;
-    if(v.y>maxY)maxY=v.y;
-  }
-  const shapeHeight=maxY-minY;
-  // Place copy so its top (maxY) is 10ft below the original's bottom (minY)
-  // New maxY = minY - 10, so shift = (minY - 10) - maxY = -(shapeHeight + 10)
-  const offsetY=-(shapeHeight+10);
+  // Find vertical bounds for offset
+  const ys=Object.values(srcVerts).map(v=>v.y);
+  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const offsetY=-(( maxY-minY)+10);
 
   pushUndo();
 
-  // Create new vertex mapping: old vid → new vid
-  const vidMap=new Map();
-  for(const vid of srcVids){
-    const v=verts.get(vid);
+  // Remap vertex ids
+  const vidMap={};
+  for(const[oldId,v]of Object.entries(srcVerts)){
     const newVid=nVid++;
     verts.set(newVid,{x:v.x,y:v.y+offsetY});
-    vidMap.set(vid,newVid);
+    vidMap[oldId]=newVid;
   }
 
-  // Assign new areaId
   const newAid=nAid++;
-
-  // Create new edges using mapped vertices
   for(const e of srcEdges){
-    const na=vidMap.get(e.a),nb=vidMap.get(e.b);
-    const newEid=nEid++;
-    edges.set(newEid,{a:na,b:nb,areaId:newAid});
+    const na=vidMap[e.a],nb=vidMap[e.b];
+    edges.set(nEid++,{a:na,b:nb,areaId:newAid});
   }
 
-  // Name the new area
-  const color=COLORS[(areaNames.size)%COLORS.length];
+  const color=COLORS[areaNames.size%COLORS.length];
   areaNames.set(newAid,{name,color});
-
-  // Select the new shape
   selAid=newAid;
-  copyAid=null;
 
   updateSelPanel();
   redraw();updateStats();autoSave();
@@ -3104,6 +3112,7 @@ function closeWithoutArchive(){
   clearProv();undoStack=[];redoStack=[];
   currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
   isDirty=false;
+  clipboard=null;
   resetPages();
   localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
   showLanding();
@@ -3129,6 +3138,7 @@ function closeWithArchive(){
     clearProv();undoStack=[];redoStack=[];
     currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
     isDirty=false;
+    clipboard=null;
     resetPages();
     localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
     showLanding();
@@ -3243,6 +3253,7 @@ function removePreset(i){
 updateLenDisp();
 updateUrBtns();
 updatePageUI();
+updatePasteBtn();
 window.addEventListener('beforeunload',e=>{e.preventDefault();e.returnValue='';});
 
 if(restoreAutosave()){
