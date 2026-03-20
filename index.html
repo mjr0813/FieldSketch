@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>FieldSketch</title>
@@ -980,7 +983,7 @@ header{
       <label for="exportBW">Black &amp; white (laser print)</label>
       <span id="exportPageCount" style="margin-left:auto;font-size:11px;color:var(--muted);font-family:'DM Mono',monospace"></span>
     </div>
-    <p style="font-size:11px;color:var(--muted);line-height:1.5">Tap <strong>Export</strong> to send via email, save to Photos, or print.</p>
+    <p style="font-size:11px;color:var(--muted);line-height:1.5">Preview shows the current page. Tap <strong>Export</strong> to send all pages as separate images via email, save to Photos, or print.</p>
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
       <button class="mbtn mbtn-accent" id="exportShareBtn" onclick="exportShare()">
@@ -1034,6 +1037,7 @@ const DIR_DEG = {N:90,NE:45,E:0,SE:315,S:270,SW:225,W:180,NW:135};
 // ═══════════════════════════════════════════════════════
 let verts=new Map(),edges=new Map(),areaNames=new Map();
 let nVid=1,nEid=1,nAid=1;
+let isExporting=false;
 
 // ── Pages ─────────────────────────────────────────────
 // Each page is an independent drawing snapshot
@@ -1603,7 +1607,7 @@ function redraw(){
   ctx.clearRect(0,0,W,H);
   drawGrid(W,H);drawOriginMark();drawComponents();
   if(mode==='select')drawSelectionHighlight();
-  drawProvisional();drawCursorMark();
+  if(!isExporting){drawProvisional();drawCursorMark();}
 }
 
 function drawGrid(W,H){
@@ -2631,6 +2635,7 @@ function _renderPageCanvas(pageIdx,bw,cb){
   saveCurrent();
 
   function doRender(){
+    isExporting=true;
     fitScreen();
     setTimeout(()=>{
       const ec=document.createElement('canvas');
@@ -2639,6 +2644,7 @@ function _renderPageCanvas(pageIdx,bw,cb){
       ectx.fillStyle='#f0ede6';ectx.fillRect(0,0,ec.width,ec.height);
       ectx.drawImage(canvas,0,0);
       if(bw)_applyBW(ec);
+      isExporting=false;
       // Restore original page
       restorePageSnapshot(savedSnap);
       currentPage=savedPageIdx;
@@ -2663,6 +2669,7 @@ function _renderSnapshotCanvas(snap,bw,cb){
   const savedSnap=pageSnapshot();
   const savedPageIdx=currentPage;
   restorePageSnapshot(snap);
+  isExporting=true;
   redraw();
   setTimeout(()=>{
     const ec=document.createElement('canvas');
@@ -2671,6 +2678,7 @@ function _renderSnapshotCanvas(snap,bw,cb){
     ectx.fillStyle='#f0ede6';ectx.fillRect(0,0,ec.width,ec.height);
     ectx.drawImage(canvas,0,0);
     if(bw)_applyBW(ec);
+    isExporting=false;
     restorePageSnapshot(savedSnap);
     currentPage=savedPageIdx;
     pages[savedPageIdx]=null;
@@ -2878,7 +2886,6 @@ function addPage(){
   saveCurrent();
   pages.splice(currentPage+1,0,null);
   currentPage++;
-  // Fresh canvas
   verts.clear();edges.clear();areaNames.clear();
   nVid=1;nEid=1;nAid=1;curPlaced=false;
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
@@ -2886,6 +2893,9 @@ function addPage(){
   vpX=0;vpY=0;vpS=8;
   updateLenDisp();updateUrBtns();
   setMode('draw');fitScreen();
+  // Center cursor in world coords
+  const W=canvas.clientWidth,H=canvas.clientHeight;
+  curX=0;curY=0;curPlaced=false;
   redraw();updateStats();updateCloseBtn();
   updatePageUI();
   markDirty();
