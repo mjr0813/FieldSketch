@@ -355,7 +355,12 @@ header{
   transition:opacity .2s;z-index:20;
 }
 .areas-overlay.show{opacity:1;pointer-events:all;}
-.ao-title{font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.ao-header{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;user-select:none;}
+.ao-title{font-size:8px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);}
+.ao-chevron{width:10px;height:10px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.areas-overlay.collapsed .ao-chevron{transform:rotate(-90deg);}
+.areas-overlay.collapsed .ao-body{display:none;}
+.ao-body{margin-top:7px;}
 .ao-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid var(--border2);}
 .ao-row:last-of-type{border-bottom:none;}
 .ao-name{font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px;}
@@ -717,11 +722,16 @@ header{
     <div class="snap-badge" id="snapBadge">⊙ Snap</div>
     <div class="prov-banner" id="provBanner">Provisional — tap CONFIRM</div>
     <div class="areas-overlay" id="areasOverlay">
-      <div class="ao-title">Named Areas</div>
-      <div id="aoList"></div>
-      <div class="ao-total">
-        <span class="ao-total-lbl">Total</span>
-        <span class="ao-total-val" id="glaVal">0 ft²</span>
+      <div class="ao-header" onclick="toggleAreasOverlay()">
+        <div class="ao-title">Named Areas</div>
+        <svg class="ao-chevron" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M1 1l4 4 4-4"/></svg>
+      </div>
+      <div class="ao-body">
+        <div id="aoList"></div>
+        <div class="ao-total">
+          <span class="ao-total-lbl">Total</span>
+          <span class="ao-total-val" id="glaVal">0 ft²</span>
+        </div>
       </div>
     </div>
   </div>
@@ -2784,14 +2794,44 @@ function closeWithArchive(){
     const idx=files.findIndex(f=>f.id===currentFileId);
     if(idx>=0){files[idx].hasUnarchived=false;saveFiles(files);}
   }
-  doArchive(currentDrawingName||'Untitled',drawingSnapshot());
-  verts.clear();edges.clear();areaNames.clear();
-  nVid=1;nEid=1;nAid=1;curPlaced=false;
-  clearProv();undoStack=[];redoStack=[];
-  currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
-  isDirty=false;
-  localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
-  showLanding();
+  const name=currentDrawingName||'Untitled';
+  const data=drawingSnapshot();
+  const json=JSON.stringify({name,verts:data.verts,edges:data.edges,areaNames:data.areaNames,nVid:data.nVid,nEid:data.nEid,nAid:data.nAid},null,2);
+  const blob=new Blob([json],{type:'application/octet-stream'});
+  const file=new File([blob],name+'.fsk',{type:'application/octet-stream'});
+
+  function doClose(){
+    verts.clear();edges.clear();areaNames.clear();
+    nVid=1;nEid=1;nAid=1;curPlaced=false;
+    clearProv();undoStack=[];redoStack=[];
+    currentFileId=null;currentDrawingName=null;currentDrawingDate=null;
+    isDirty=false;
+    localStorage.setItem(LS_AUTOSAVE,JSON.stringify({cleared:true}));
+    showLanding();
+  }
+
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file]})
+      .then(()=>doClose())
+      .catch(err=>{
+        // User cancelled Share Sheet — stay in drawing
+        if(err.name!=='AbortError')doClose();
+        // If AbortError (cancel), do nothing — remain in drawing
+      });
+  }else{
+    // Fallback download then close
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=name+'.fsk';
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    doClose();
+  }
+}
+
+function toggleAreasOverlay(){
+  document.getElementById('areasOverlay').classList.toggle('collapsed');
 }
 
 // ── Archive via Web Share API ─────────────────────────
