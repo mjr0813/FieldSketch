@@ -2890,7 +2890,12 @@ function addPage(){
   undoStack=[];redoStack=[];
   updateLenDisp();updateUrBtns();
   setMode('draw');
-  setTimeout(()=>{fitScreen();redraw();updateStats();updateCloseBtn();},50);
+  vpX=0;vpY=0;vpS=8;
+  setTimeout(()=>{
+    const wrap=document.getElementById('canvasWrap');
+    vpX=wrap.clientWidth/2;vpY=wrap.clientHeight/2;
+    redraw();updateStats();updateCloseBtn();
+  },50);
   updatePageUI();
   markDirty();
 }
