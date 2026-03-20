@@ -906,14 +906,20 @@ header{
   </div>
 </div>
 
-<!-- Export options modal -->
-<div class="archive-alert" id="exportModal">
-  <div class="archive-alert-box">
-    <h3>Export Drawing</h3>
-    <p>This opens a PNG preview in a new tab. From there, tap the Share button in Safari to email, save to Photos, or print.</p>
+<!-- Export preview modal -->
+<div class="modal-overlay" id="exportModal" style="align-items:center;justify-content:center;padding:20px">
+  <div class="modal" style="width:min(600px,92vw);max-height:88vh;display:flex;flex-direction:column;gap:14px">
+    <div class="modal-title">Export Drawing</div>
+    <div id="exportPreviewWrap" style="flex:1;overflow:hidden;border-radius:8px;border:1px solid var(--border);background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:200px">
+      <img id="exportPreviewImg" src="" alt="Preview" style="max-width:100%;max-height:60vh;display:block;">
+    </div>
+    <p style="font-size:11px;color:var(--muted);line-height:1.5">Tap <strong>Share</strong> to send via email, save to Photos, or print.</p>
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
-      <button class="mbtn mbtn-accent" onclick="exportPreview()">Preview</button>
+      <button class="mbtn mbtn-accent" id="exportShareBtn" onclick="exportShare()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" style="margin-right:4px"><path d="M9 2l3 3-3 3M12 5H5a3 3 0 000 6h1"/></svg>
+        Share
+      </button>
     </div>
   </div>
 </div>
@@ -2459,11 +2465,44 @@ document.getElementById('areaNameInp').addEventListener('keydown',e=>{if(e.key==
 // ═══════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════
+let _exportBlob=null;
+
 function exportPNG(){
+  _exportBlob=null;
+  document.getElementById('exportPreviewImg').src='';
   document.getElementById('exportModal').classList.add('show');
+  document.getElementById('exportShareBtn').disabled=true;
+  _renderExportCanvas(ec=>{
+    ec.toBlob(blob=>{
+      _exportBlob=blob;
+      const url=URL.createObjectURL(blob);
+      const img=document.getElementById('exportPreviewImg');
+      img.onload=()=>URL.revokeObjectURL(url);
+      img.src=url;
+      document.getElementById('exportShareBtn').disabled=false;
+    },'image/png');
+  });
 }
 function hideExportModal(){
   document.getElementById('exportModal').classList.remove('show');
+  _exportBlob=null;
+}
+function exportShare(){
+  if(!_exportBlob)return;
+  const name=_exportName()+'.png';
+  const file=new File([_exportBlob],name,{type:'image/png'});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file]}).catch(()=>{});
+  }else{
+    // Fallback for non-iOS: direct download
+    const url=URL.createObjectURL(_exportBlob);
+    const a=document.createElement('a');
+    a.href=url;a.download=name;
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  hideExportModal();
 }
 function _renderExportCanvas(cb){
   fitScreen();
@@ -2478,33 +2517,6 @@ function _renderExportCanvas(cb){
 }
 function _exportName(){
   return(currentDrawingName||'FieldSketch').replace(/[^a-z0-9_\-\s]/gi,'_');
-}
-function exportPreview(){
-  hideExportModal();
-  _renderExportCanvas(ec=>{
-    const dataUrl=ec.toDataURL('image/png');
-    const name=_exportName();
-    const html=`<!DOCTYPE html><html><head><title>${name}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#1c1a16;display:flex;align-items:center;justify-content:center;min-height:100vh;}img{max-width:100%;height:auto;}@media print{body{background:white;display:block;}img{width:100%;height:auto;page-break-inside:avoid;}}</style></head><body><img src="${dataUrl}" alt="${name}"></body></html>`;
-    const blob=new Blob([html],{type:'text/html'});
-    const url=URL.createObjectURL(blob);
-    window.open(url,'_blank');
-    // Revoke after a generous delay to ensure the tab has loaded
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
-  });
-}
-function exportDownload(){
-  hideExportModal();
-  _renderExportCanvas(ec=>{
-    const name=_exportName();
-    ec.toBlob(blob=>{
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url;a.download=name+'.png';
-      document.body.appendChild(a);a.click();
-      document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-    },'image/png');
-  });
 }
 
 // ═══════════════════════════════════════════════════════
