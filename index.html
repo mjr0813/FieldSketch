@@ -910,11 +910,10 @@ header{
 <div class="archive-alert" id="exportModal">
   <div class="archive-alert-box">
     <h3>Export Drawing</h3>
-    <p>Preview opens the image in a new tab where you can use the Share button.<br>Download saves the image directly to your Files app.</p>
+    <p>This opens a PNG preview in a new tab. From there, tap the Share button in Safari to email, save to Photos, or print.</p>
     <div class="modal-btns">
       <button class="mbtn mbtn-ghost" onclick="hideExportModal()">Cancel</button>
-      <button class="mbtn mbtn-ghost" onclick="exportPreview()">Preview</button>
-      <button class="mbtn mbtn-accent" onclick="exportDownload()">Download</button>
+      <button class="mbtn mbtn-accent" onclick="exportPreview()">Preview</button>
     </div>
   </div>
 </div>
@@ -2711,7 +2710,7 @@ function landingRetrieveArchive(){
 function showNewPrompt(){
   document.getElementById('newNameInp').value='';
   document.getElementById('newPrompt').classList.add('show');
-  document.getElementById('newNameInp').focus();
+  setTimeout(()=>document.getElementById('newNameInp').focus(),200);
 }
 function hideNewPrompt(){document.getElementById('newPrompt').classList.remove('show');}
 function confirmNewDrawing(){
