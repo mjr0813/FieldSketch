@@ -2891,12 +2891,12 @@ function addPage(){
   clearProv();numBuf='';selBuf='';selWallEid=null;selAid=null;
   undoStack=[];redoStack=[];
   vpX=0;vpY=0;vpS=8;
+  curX=0;curY=0;
   updateLenDisp();updateUrBtns();
-  setMode('draw');fitScreen();
-  // Center cursor in world coords
-  const W=canvas.clientWidth,H=canvas.clientHeight;
-  curX=0;curY=0;curPlaced=false;
-  redraw();updateStats();updateCloseBtn();
+  setMode('draw');
+  // Defer fitScreen until after canvas has been laid out
+  requestAnimationFrame(()=>{fitScreen();redraw();});
+  updateStats();updateCloseBtn();
   updatePageUI();
   markDirty();
 }
@@ -3160,7 +3160,8 @@ function toggleAreasOverlay(){
 
 // ── Archive via Web Share API ─────────────────────────
 function doArchive(name,data){
-  const json=JSON.stringify({name,verts:data.verts||[...verts.entries()],edges:data.edges||[...edges.entries()],areaNames:data.areaNames||[...areaNames.entries()],nVid:data.nVid||nVid,nEid:data.nEid||nEid,nAid:data.nAid||nAid},null,2);
+  const snap=drawingSnapshot(); // always use full snapshot including all pages
+  const json=JSON.stringify({name,...snap},null,2);
   const blob=new Blob([json],{type:'application/octet-stream'});
   const file=new File([blob],name+'.fsk',{type:'application/octet-stream'});
   if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
